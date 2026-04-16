@@ -12,3 +12,4 @@ frontend/coverage/
 .idea/
 .vscode/
 *.log
+.omx
