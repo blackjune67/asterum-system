@@ -33,11 +33,19 @@ export function MonthGrid({ month, items, onSelectDate, onSelectItem }: Props) {
         const dayItems = items.filter((item) => item.date === isoDate)
 
         return (
-          <button
+          <div
             key={isoDate}
-            className="min-h-36 rounded-[1.6rem] border border-white/70 bg-white/80 p-3 text-left shadow-sm transition hover:-translate-y-0.5"
+            aria-label={`Open day ${isoDate}`}
+            className="min-h-36 rounded-[1.6rem] border border-white/70 bg-white/80 p-3 text-left shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-accent"
             onClick={() => onSelectDate(isoDate)}
-            type="button"
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onSelectDate(isoDate)
+              }
+            }}
+            role="button"
+            tabIndex={0}
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold">{day}</span>
@@ -63,7 +71,7 @@ export function MonthGrid({ month, items, onSelectDate, onSelectItem }: Props) {
                 </button>
               ))}
             </div>
-          </button>
+          </div>
         )
       })}
     </div>

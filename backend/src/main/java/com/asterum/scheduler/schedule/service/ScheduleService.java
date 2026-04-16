@@ -153,6 +153,12 @@ public class ScheduleService {
             .filter(item -> !item.getOccurrenceDate().isBefore(occurrence.getOccurrenceDate()))
             .toList();
 
+        SeriesEndType originalEndType = originalSeries.getEndType();
+        LocalDate originalUntilDate = originalSeries.getUntilDate();
+        Integer remainingOccurrenceCount = originalEndType == SeriesEndType.COUNT
+            ? futureOccurrences.size()
+            : originalSeries.getOccurrenceCount();
+
         originalSeries.closeBefore(occurrence.getOccurrenceDate());
         futureOccurrences.forEach(ScheduleOccurrence::cancel);
 
@@ -163,9 +169,9 @@ public class ScheduleService {
             request.endTime(),
             originalSeries.getRecurrenceType(),
             originalSeries.getIntervalValue(),
-            originalSeries.getEndType(),
-            originalSeries.getUntilDate(),
-            originalSeries.getEndType() == SeriesEndType.COUNT ? futureOccurrences.size() : originalSeries.getOccurrenceCount(),
+            originalEndType,
+            originalUntilDate,
+            remainingOccurrenceCount,
             occurrence.getOccurrenceDate()
         ));
 
