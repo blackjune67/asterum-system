@@ -1,0 +1,17 @@
+package com.asterum.scheduler.schedule.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+
+public record CreateScheduleRequest(
+    @NotBlank String title,
+    @NotNull LocalDate date,
+    @NotNull LocalTime startTime,
+    @NotNull LocalTime endTime,
+    List<Long> participantIds,
+    RecurrenceRequest recurrence
+) {
+}

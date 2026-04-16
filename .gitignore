@@ -1,0 +1,14 @@
+.agents/docs/
+.claude/docs/
+
+backend/.gradle/
+backend/build/
+backend/data/
+
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+.idea/
+.vscode/
+*.log
