@@ -5,13 +5,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: '#13141f',
-        mist: '#f3f5f8',
-        line: '#d8dee8',
-        accent: '#0f766e',
+        ink: '#43273f',
+        mist: '#fff6fd',
+        line: '#f1cce5',
+        accent: '#e872b4',
+        accentSoft: '#f9cae4',
+        lilac: '#cdb7ff',
+        butter: '#fff0bf',
+        blush: '#fdf2f8',
+        plum: '#7f4b75',
       },
       boxShadow: {
-        panel: '0 18px 40px rgba(15, 23, 42, 0.08)',
+        panel: '0 28px 80px rgba(169, 103, 154, 0.18)',
+        glow: '0 0 0 1px rgba(255,255,255,0.55), 0 20px 60px rgba(226, 118, 179, 0.24)',
       },
     },
   },

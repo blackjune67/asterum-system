@@ -115,20 +115,23 @@ export function ScheduleFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/40 px-4">
-      <div className="w-full max-w-2xl rounded-[2rem] bg-white p-6 shadow-panel">
+    <div className="dream-overlay fixed inset-0 z-30 flex items-center justify-center px-4">
+      <div className="dream-modal max-w-2xl">
         <div className="flex items-center justify-between">
-          <h3 className="text-2xl font-semibold">{mode === 'create' ? '일정 등록' : '일정 수정'}</h3>
-          <button className="text-sm text-slate-500" onClick={onClose}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">Liner Notes</p>
+            <h3 className="mt-2 text-2xl font-semibold text-ink">{mode === 'create' ? '일정 등록' : '일정 수정'}</h3>
+          </div>
+          <button className="dream-button-secondary px-4 py-2 text-sm" onClick={onClose}>
             닫기
           </button>
         </div>
 
         <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
           <label className="grid gap-2">
-            <span className="text-sm font-medium">제목</span>
+            <span className="text-sm font-medium text-plum">제목</span>
             <input
-              className="rounded-2xl border border-line px-4 py-3"
+              className="dream-field"
               value={form.title}
               onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
               required
@@ -137,27 +140,27 @@ export function ScheduleFormModal({
 
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="grid gap-2">
-              <span className="text-sm font-medium">날짜</span>
+              <span className="text-sm font-medium text-plum">날짜</span>
               <input
-                className="rounded-2xl border border-line px-4 py-3"
+                className="dream-field"
                 type="date"
                 value={form.date}
                 onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
               />
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium">시작 시간</span>
+              <span className="text-sm font-medium text-plum">시작 시간</span>
               <input
-                className="rounded-2xl border border-line px-4 py-3"
+                className="dream-field"
                 type="time"
                 value={form.startTime}
                 onChange={(event) => setForm((current) => ({ ...current, startTime: event.target.value }))}
               />
             </label>
             <label className="grid gap-2">
-              <span className="text-sm font-medium">종료 시간</span>
+              <span className="text-sm font-medium text-plum">종료 시간</span>
               <input
-                className="rounded-2xl border border-line px-4 py-3"
+                className="dream-field"
                 type="time"
                 value={form.endTime}
                 onChange={(event) => setForm((current) => ({ ...current, endTime: event.target.value }))}
@@ -166,7 +169,7 @@ export function ScheduleFormModal({
           </div>
 
           <div className="grid gap-2">
-            <span className="text-sm font-medium">참여자</span>
+            <span className="text-sm font-medium text-plum">참여자</span>
             <ParticipantSelect
               participants={participants}
               selectedIds={form.participantIds}
@@ -181,10 +184,11 @@ export function ScheduleFormModal({
           </div>
 
           {mode === 'create' && (
-            <div className="grid gap-4 rounded-3xl border border-line bg-mist p-4">
+            <div className="dream-card grid gap-4 p-4">
               <label className="flex items-center gap-3 text-sm font-medium">
                 <input
                   aria-label="반복 일정"
+                  className="h-4 w-4 accent-accent"
                   type="checkbox"
                   checked={form.recurring}
                   onChange={(event) =>
@@ -200,9 +204,9 @@ export function ScheduleFormModal({
               {form.recurring && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium">반복 유형</span>
+                    <span className="text-sm font-medium text-plum">반복 유형</span>
                     <select
-                      className="rounded-2xl border border-line px-4 py-3"
+                      className="dream-field"
                       value={form.recurrenceType}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -217,9 +221,9 @@ export function ScheduleFormModal({
                     </select>
                   </label>
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium">간격</span>
+                    <span className="text-sm font-medium text-plum">간격</span>
                     <input
-                      className="rounded-2xl border border-line px-4 py-3"
+                      className="dream-field"
                       min={1}
                       type="number"
                       value={form.interval}
@@ -232,9 +236,9 @@ export function ScheduleFormModal({
                     />
                   </label>
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium">종료 조건</span>
+                    <span className="text-sm font-medium text-plum">종료 조건</span>
                     <select
-                      className="rounded-2xl border border-line px-4 py-3"
+                      className="dream-field"
                       value={form.endType}
                       onChange={(event) =>
                         setForm((current) => ({
@@ -250,9 +254,9 @@ export function ScheduleFormModal({
                   </label>
                   {form.endType === 'COUNT' && (
                     <label className="grid gap-2">
-                      <span className="text-sm font-medium">반복 횟수</span>
+                      <span className="text-sm font-medium text-plum">반복 횟수</span>
                       <input
-                        className="rounded-2xl border border-line px-4 py-3"
+                        className="dream-field"
                         min={1}
                         type="number"
                         value={form.count}
@@ -267,9 +271,9 @@ export function ScheduleFormModal({
                   )}
                   {form.endType === 'UNTIL_DATE' && (
                     <label className="grid gap-2">
-                      <span className="text-sm font-medium">종료 날짜</span>
+                      <span className="text-sm font-medium text-plum">종료 날짜</span>
                       <input
-                        className="rounded-2xl border border-line px-4 py-3"
+                        className="dream-field"
                         type="date"
                         value={form.untilDate}
                         onChange={(event) =>
@@ -286,7 +290,7 @@ export function ScheduleFormModal({
             </div>
           )}
 
-          <button className="rounded-2xl bg-slate-900 px-4 py-3 text-white" type="submit">
+          <button className="dream-button-primary" type="submit">
             {mode === 'create' ? '저장' : '수정하기'}
           </button>
         </form>

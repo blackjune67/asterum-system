@@ -16,9 +16,10 @@ export function ParticipantSelect({ participants, selectedIds, onChange }: Props
         return (
           <label
             key={participant.id}
-            className="flex cursor-pointer items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 text-sm"
+            className="dream-card flex cursor-pointer items-center gap-3 px-4 py-3 text-sm"
           >
             <input
+              className="h-4 w-4 accent-accent"
               type="checkbox"
               checked={checked}
               onChange={() => {
@@ -29,7 +30,7 @@ export function ParticipantSelect({ participants, selectedIds, onChange }: Props
                 )
               }}
             />
-            <span>
+            <span className="text-plum">
               {participant.name} ({participant.type})
             </span>
           </label>
