@@ -133,4 +133,87 @@ describe('CalendarPage', () => {
     expect(await screen.findByText('일정 상세 정보를 불러오지 못했습니다.')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Shoot' })).not.toBeInTheDocument()
   })
+
+  test('opens the create modal from a calendar day selection', async () => {
+    const user = userEvent.setup()
+
+    fetchMock
+      .mockResolvedValueOnce(createJsonResponse([]))
+      .mockResolvedValueOnce(
+        createJsonResponse([
+          { id: 1, name: '하민', type: 'MEMBER' },
+          { id: 3, name: '촬영팀', type: 'STAFF' },
+        ]),
+      )
+
+    render(<CalendarPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Open day 2026-04-15' }))
+
+    expect(screen.getByRole('heading', { name: '일정 등록' })).toBeInTheDocument()
+    expect(screen.getByLabelText('날짜')).toHaveValue('2026-04-15')
+  })
+
+  test('asks for a delete scope when removing a recurring schedule', async () => {
+    const user = userEvent.setup()
+
+    fetchMock
+      .mockResolvedValueOnce(
+        createJsonResponse([
+          {
+            id: 1,
+            seriesId: 11,
+            title: 'Recurring shoot',
+            date: '2026-04-15',
+            startTime: '10:00:00',
+            endTime: '12:00:00',
+            isRecurring: true,
+            isException: false,
+            participantIds: [1],
+            participants: [{ id: 1, name: '하민', type: 'MEMBER' }],
+            recurrence: {
+              type: 'WEEKLY',
+              interval: 1,
+              endType: 'COUNT',
+              untilDate: null,
+              count: 3,
+              anchorDate: '2026-04-15',
+            },
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(createJsonResponse([{ id: 1, name: '하민', type: 'MEMBER' }]))
+      .mockResolvedValueOnce(
+        createJsonResponse({
+          id: 1,
+          seriesId: 11,
+          title: 'Recurring shoot',
+          date: '2026-04-15',
+          startTime: '10:00:00',
+          endTime: '12:00:00',
+          isRecurring: true,
+          isException: false,
+          participantIds: [1],
+          participants: [{ id: 1, name: '하민', type: 'MEMBER' }],
+          recurrence: {
+            type: 'WEEKLY',
+            interval: 1,
+            endType: 'COUNT',
+            untilDate: null,
+            count: 3,
+            anchorDate: '2026-04-15',
+          },
+        }),
+      )
+
+    render(<CalendarPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Recurring shoot' }))
+    await user.click(await screen.findByRole('button', { name: '삭제' }))
+
+    expect(await screen.findByRole('heading', { name: '삭제 범위 선택' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '해당 일정만' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '이후 모든 일정' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '전체 일정' })).toBeInTheDocument()
+  })
 })
