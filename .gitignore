@@ -1,5 +1,6 @@
 .agents/docs/
 .claude/docs/
+.worktrees/
 
 backend/.gradle/
 backend/build/
