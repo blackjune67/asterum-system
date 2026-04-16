@@ -19,10 +19,12 @@ const items: ScheduleItem[] = [
 ]
 
 test('does not render nested buttons for calendar cells and schedule items', () => {
+  const itemsByDate = new Map<string, ScheduleItem[]>([['2026-04-15', items]])
+
   const { container } = render(
     <MonthGrid
       month={new Date(2026, 3, 1)}
-      items={items}
+      itemsByDate={itemsByDate}
       onSelectDate={() => {}}
       onSelectItem={() => {}}
     />,

@@ -1,23 +1,26 @@
 import type { ScheduleItem } from '../../types/schedule'
 import { normalizeTime } from '../schedule/dateUtils'
 
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+
 interface Props {
   month: Date
-  items: ScheduleItem[]
+  itemsByDate: ReadonlyMap<string, ScheduleItem[]>
   onSelectDate: (date: string) => void
   onSelectItem: (item: ScheduleItem) => void
 }
 
-export function MonthGrid({ month, items, onSelectDate, onSelectItem }: Props) {
+export function MonthGrid({ month, itemsByDate, onSelectDate, onSelectItem }: Props) {
   const year = month.getFullYear()
   const monthIndex = month.getMonth()
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
   const firstWeekday = new Date(year, monthIndex, 1).getDay()
   const cells = Array.from({ length: firstWeekday + daysInMonth }, (_, index) => index - firstWeekday + 1)
+  const todayLabel = new Date().toDateString()
 
   return (
     <div className="grid grid-cols-7 gap-3">
-      {['일', '월', '화', '수', '목', '금', '토'].map((label) => (
+      {WEEKDAY_LABELS.map((label) => (
         <div key={label} className="px-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
           {label}
         </div>
@@ -30,7 +33,7 @@ export function MonthGrid({ month, items, onSelectDate, onSelectItem }: Props) {
 
         const date = new Date(year, monthIndex, day)
         const isoDate = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-        const dayItems = items.filter((item) => item.date === isoDate)
+        const dayItems = itemsByDate.get(isoDate) ?? []
 
         return (
           <div
@@ -49,7 +52,7 @@ export function MonthGrid({ month, items, onSelectDate, onSelectItem }: Props) {
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold">{day}</span>
-              {date.toDateString() === new Date().toDateString() && (
+              {date.toDateString() === todayLabel && (
                 <span className="rounded-full bg-accent px-2 py-1 text-[10px] font-semibold text-white">TODAY</span>
               )}
             </div>

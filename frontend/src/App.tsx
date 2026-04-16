@@ -1,3 +1,4 @@
+import { Agentation } from 'agentation'
 import { CalendarPage } from './features/calendar/CalendarPage'
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
 
         <CalendarPage />
       </main>
+      <Agentation />
     </div>
   )
 }

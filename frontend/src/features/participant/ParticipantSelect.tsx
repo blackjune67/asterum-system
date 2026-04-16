@@ -1,9 +1,11 @@
 import type { Participant } from '../../types/participant'
 
+type ParticipantSelectionUpdate = number[] | ((currentIds: number[]) => number[])
+
 interface Props {
   participants: Participant[]
   selectedIds: number[]
-  onChange: (ids: number[]) => void
+  onChange: (update: ParticipantSelectionUpdate) => void
 }
 
 export function ParticipantSelect({ participants, selectedIds, onChange }: Props) {
@@ -19,13 +21,13 @@ export function ParticipantSelect({ participants, selectedIds, onChange }: Props
             <input
               type="checkbox"
               checked={checked}
-              onChange={() =>
-                onChange(
-                  checked
-                    ? selectedIds.filter((id) => id !== participant.id)
-                    : [...selectedIds, participant.id],
+              onChange={() => {
+                onChange((currentIds) =>
+                  currentIds.includes(participant.id)
+                    ? currentIds.filter((id) => id !== participant.id)
+                    : [...currentIds, participant.id],
                 )
-              }
+              }}
             />
             <span>
               {participant.name} ({participant.type})
