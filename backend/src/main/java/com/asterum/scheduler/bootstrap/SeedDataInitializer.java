@@ -16,8 +16,12 @@ public class SeedDataInitializer {
         return args -> {
             if (participantRepository.count() == 0L) {
                 participantRepository.saveAll(List.of(
-                    new Participant("하민", ParticipantType.MEMBER),
+                    new Participant("예준", ParticipantType.MEMBER),
                     new Participant("노아", ParticipantType.MEMBER),
+                    new Participant("은호", ParticipantType.MEMBER),
+                    new Participant("밤비", ParticipantType.MEMBER),
+                    new Participant("하민", ParticipantType.MEMBER),
+                    new Participant("기술팀", ParticipantType.STAFF),
                     new Participant("디자인팀", ParticipantType.STAFF),
                     new Participant("촬영팀", ParticipantType.STAFF)
                 ));
