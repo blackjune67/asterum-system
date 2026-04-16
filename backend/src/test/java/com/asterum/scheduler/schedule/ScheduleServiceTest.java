@@ -105,4 +105,45 @@ class ScheduleServiceTest {
         assertThat(scheduleService.listMonth(2026, 4)).extracting(ScheduleResponse::date)
             .containsExactly(LocalDate.of(2026, 4, 20));
     }
+
+    @Test
+    void updatesFollowingRecurringOccurrencesWithNewSeries() {
+        scheduleService.create(new CreateScheduleRequest(
+            "Weekly shoot",
+            LocalDate.of(2026, 4, 20),
+            LocalTime.of(10, 0),
+            LocalTime.of(12, 0),
+            List.of(1L),
+            new RecurrenceRequest(true, RecurrenceType.WEEKLY, 1, SeriesEndType.COUNT, null, 4)
+        ));
+
+        ScheduleResponse target = scheduleService.listMonth(2026, 4).stream()
+            .filter(item -> item.date().equals(LocalDate.of(2026, 4, 27)))
+            .findFirst()
+            .orElseThrow();
+
+        ScheduleResponse updated = scheduleService.update(target.id(), ScopeType.FOLLOWING, new UpdateScheduleRequest(
+            "Updated shoot",
+            LocalDate.of(2026, 4, 27),
+            LocalTime.of(11, 0),
+            LocalTime.of(13, 0),
+            List.of(2L, 3L)
+        ));
+
+        assertThat(updated.date()).isEqualTo(LocalDate.of(2026, 4, 27));
+        assertThat(updated.title()).isEqualTo("Updated shoot");
+        assertThat(updated.participantIds()).containsExactly(2L, 3L);
+
+        assertThat(scheduleService.listMonth(2026, 4)).extracting(ScheduleResponse::date, ScheduleResponse::title)
+            .containsExactly(
+                org.assertj.core.groups.Tuple.tuple(LocalDate.of(2026, 4, 20), "Weekly shoot"),
+                org.assertj.core.groups.Tuple.tuple(LocalDate.of(2026, 4, 27), "Updated shoot")
+            );
+
+        assertThat(scheduleService.listMonth(2026, 5)).extracting(ScheduleResponse::date, ScheduleResponse::title)
+            .containsExactly(
+                org.assertj.core.groups.Tuple.tuple(LocalDate.of(2026, 5, 4), "Updated shoot"),
+                org.assertj.core.groups.Tuple.tuple(LocalDate.of(2026, 5, 11), "Updated shoot")
+            );
+    }
 }
