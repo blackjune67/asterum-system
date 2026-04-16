@@ -12,21 +12,21 @@ export function ScheduleDetailModal({ item, onClose, onEdit, onDelete }: Props) 
   if (!item) return null
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/40 px-4">
-      <div className="w-full max-w-lg rounded-[2rem] bg-white p-6 shadow-panel">
+    <div className="dream-overlay fixed inset-0 z-30 flex items-center justify-center px-4">
+      <div className="dream-modal max-w-lg">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">
               {item.isRecurring ? 'Recurring Schedule' : 'One-time Schedule'}
             </p>
-            <h3 className="mt-2 text-2xl font-semibold">{item.title}</h3>
+            <h3 className="mt-2 text-2xl font-semibold text-ink">{item.title}</h3>
           </div>
-          <button className="text-sm text-slate-500" onClick={onClose}>
+          <button className="dream-button-secondary px-4 py-2 text-sm" onClick={onClose}>
             닫기
           </button>
         </div>
 
-        <div className="mt-5 grid gap-3 rounded-3xl bg-mist p-4 text-sm">
+        <div className="dream-card mt-5 grid gap-3 p-4 text-sm text-plum">
           <p>날짜: {item.date}</p>
           <p>
             시간: {normalizeTime(item.startTime)} - {normalizeTime(item.endTime)}
@@ -49,11 +49,11 @@ export function ScheduleDetailModal({ item, onClose, onEdit, onDelete }: Props) 
         </div>
 
         <div className="mt-6 flex gap-3">
-          <button className="rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white" onClick={onEdit}>
+          <button className="dream-button-primary" onClick={onEdit}>
             수정
           </button>
           <button
-            className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700"
+            className="dream-button-secondary text-rose-700"
             onClick={() => onDelete(item.isRecurring ? 'THIS' : 'THIS')}
           >
             삭제

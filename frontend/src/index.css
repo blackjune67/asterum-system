@@ -1,29 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  font-family: "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+  font-family: 'Noto Sans KR', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #13141f;
+  color: #43273f;
   background:
-    radial-gradient(circle at top left, rgba(15, 118, 110, 0.1), transparent 32%),
-    linear-gradient(180deg, #f8fbfc 0%, #eef3f7 100%);
+    radial-gradient(circle at 12% 18%, rgba(255, 244, 179, 0.95), transparent 18%),
+    radial-gradient(circle at 86% 14%, rgba(215, 188, 255, 0.85), transparent 20%),
+    radial-gradient(circle at 82% 72%, rgba(255, 208, 229, 0.78), transparent 26%),
+    linear-gradient(180deg, #ffd9ee 0%, #f9d0ea 38%, #f4d8f7 64%, #fff8ed 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --surface-white: rgba(255, 251, 255, 0.72);
+  --surface-strong: rgba(255, 245, 252, 0.92);
+  --surface-border: rgba(255, 255, 255, 0.62);
+  --panel-shadow: 0 28px 80px rgba(169, 103, 154, 0.18);
+  --soft-shadow: 0 16px 38px rgba(177, 114, 160, 0.18);
+  --press-shadow: 0 12px 28px rgba(141, 71, 121, 0.18);
+  --headline-font: 'Cormorant Garamond', 'Times New Roman', serif;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  min-height: 100%;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  color: #43273f;
+  background-attachment: fixed;
 }
 
 button,
@@ -34,4 +51,103 @@ select {
 
 #root {
   min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  border: 0;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+@layer components {
+  .dream-panel {
+    @apply relative overflow-hidden rounded-[2rem] border border-white/60 bg-white/55 backdrop-blur-xl;
+    box-shadow: var(--panel-shadow);
+  }
+
+  .dream-panel::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    border-radius: calc(2rem - 1px);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.54), rgba(255, 255, 255, 0.14));
+    pointer-events: none;
+  }
+
+  .dream-card {
+    @apply relative rounded-[1.75rem] border border-white/70 bg-white/70;
+    box-shadow: var(--soft-shadow);
+  }
+
+  .dream-badge {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em];
+    background: rgba(255, 248, 253, 0.72);
+    box-shadow: 0 10px 25px rgba(191, 117, 164, 0.16);
+  }
+
+  .dream-stat {
+    @apply dream-card px-4 py-4;
+  }
+
+  .dream-button-primary {
+    @apply rounded-full px-5 py-3 text-sm font-semibold text-white transition focus:outline-none focus:ring-2 focus:ring-white/80;
+    background: linear-gradient(135deg, #ea7cbc 0%, #c587ff 58%, #8eb6ff 100%);
+    box-shadow: 0 18px 32px rgba(198, 117, 180, 0.3);
+  }
+
+  .dream-button-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 22px 36px rgba(198, 117, 180, 0.34);
+  }
+
+  .dream-button-secondary {
+    @apply rounded-full border border-white/70 px-5 py-3 text-sm font-semibold text-ink transition focus:outline-none focus:ring-2 focus:ring-accent/40;
+    background: rgba(255, 249, 253, 0.78);
+    box-shadow: 0 14px 28px rgba(191, 117, 164, 0.12);
+  }
+
+  .dream-button-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 18px 30px rgba(191, 117, 164, 0.18);
+  }
+
+  .dream-field {
+    @apply w-full rounded-[1.35rem] border border-white/80 px-4 py-3 text-sm text-ink outline-none transition;
+    background: rgba(255, 250, 253, 0.85);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  }
+
+  .dream-field:focus {
+    border-color: rgba(232, 114, 180, 0.6);
+    box-shadow: 0 0 0 4px rgba(241, 156, 206, 0.2);
+  }
+
+  .dream-overlay {
+    background:
+      radial-gradient(circle at top left, rgba(255, 242, 179, 0.38), transparent 24%),
+      radial-gradient(circle at top right, rgba(204, 182, 255, 0.34), transparent 26%),
+      rgba(83, 41, 68, 0.34);
+    backdrop-filter: blur(20px);
+  }
+
+  .dream-modal {
+    @apply dream-panel w-full p-6 sm:p-7;
+    background: rgba(255, 249, 253, 0.82);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
