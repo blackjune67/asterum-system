@@ -70,7 +70,7 @@ public class ScheduleService {
         validateTimeRange(request.startTime(), request.endTime());
         List<Participant> directParticipants = resolveParticipants(request.participantIds());
         List<Team> teams = resolveTeams(request.teamIds());
-        Resource resource = resolveResource(request.resourceId());
+        Resource resource = lockAndResolveResource(request.resourceId());
         List<Participant> participantSnapshot = buildParticipantSnapshot(directParticipants, teams);
         RecurrenceRequest recurrence = request.recurrence();
 
@@ -128,7 +128,7 @@ public class ScheduleService {
             .map(ScheduleOccurrenceTeam::getTeam)
             .sorted(Comparator.comparing(Team::getId))
             .toList();
-        Resource resource = occurrence.getResource();
+        Resource resource = lockAndResolveResource(occurrence.getResource());
 
         ScheduleSeries series = createSeries(
             occurrence.getTitle(),
@@ -213,7 +213,7 @@ public class ScheduleService {
     private ScheduleResponse updateThis(ScheduleOccurrence occurrence, UpdateScheduleRequest request) {
         List<Participant> directParticipants = resolveParticipants(request.participantIds());
         List<Team> teams = resolveTeams(request.teamIds());
-        Resource resource = resolveResource(request.resourceId());
+        Resource resource = lockAndResolveResource(request.resourceId());
         List<Participant> participantSnapshot = buildParticipantSnapshot(directParticipants, teams);
         LocalDate date = request.date() != null ? request.date() : occurrence.getOccurrenceDate();
 
@@ -243,7 +243,7 @@ public class ScheduleService {
 
         List<Participant> directParticipants = resolveParticipants(request.participantIds());
         List<Team> teams = resolveTeams(request.teamIds());
-        Resource resource = resolveResource(request.resourceId());
+        Resource resource = lockAndResolveResource(request.resourceId());
         List<Participant> participantSnapshot = buildParticipantSnapshot(directParticipants, teams);
 
         ScheduleSeries newSeries = createSeries(
@@ -315,7 +315,7 @@ public class ScheduleService {
         ScheduleSeries series = occurrence.getSeries();
         List<Participant> directParticipants = resolveParticipants(request.participantIds());
         List<Team> teams = resolveTeams(request.teamIds());
-        Resource resource = resolveResource(request.resourceId());
+        Resource resource = lockAndResolveResource(request.resourceId());
         List<Participant> participantSnapshot = buildParticipantSnapshot(directParticipants, teams);
         List<ScheduleOccurrence> targets = scheduleOccurrenceRepository.findBySeriesIdAndStatusOrderByOccurrenceDateAscStartTimeAsc(
                 series.getId(),
@@ -383,7 +383,7 @@ public class ScheduleService {
             .map(ScheduleSeriesTeam::getTeam)
             .sorted(Comparator.comparing(Team::getId))
             .toList();
-        Resource resource = series.getResource();
+        Resource resource = lockAndResolveResource(series.getResource());
         LocalDate nextDate = recurrenceGenerator.nextDate(last.getOccurrenceDate(), series.getRecurrenceType(), series.getIntervalValue());
 
         List<LocalDate> dates = recurrenceGenerator.generateDates(
@@ -539,12 +539,19 @@ public class ScheduleService {
         return teams;
     }
 
-    private Resource resolveResource(Long resourceId) {
+    private Resource lockAndResolveResource(Long resourceId) {
         if (resourceId == null) {
             return null;
         }
-        return resourceRepository.findById(resourceId)
+        return resourceRepository.findByIdForUpdate(resourceId)
             .orElseThrow(() -> new BadRequestException("Resource does not exist"));
+    }
+
+    private Resource lockAndResolveResource(Resource resource) {
+        if (resource == null) {
+            return null;
+        }
+        return lockAndResolveResource(resource.getId());
     }
 
     private List<Participant> buildParticipantSnapshot(List<Participant> participants, List<Team> teams) {
