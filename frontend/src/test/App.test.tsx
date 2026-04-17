@@ -1,4 +1,6 @@
+import { StrictMode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import { resetApiGetCacheForTests } from '../api/client'
 import App from '../App'
 
 const fetchMock = vi.fn()
@@ -20,16 +22,21 @@ function createJsonResponse(data: unknown, ok = true, status = 200) {
 describe('App', () => {
   beforeEach(() => {
     fetchMock.mockReset()
+    resetApiGetCacheForTests()
   })
 
-  test('renders the soft album dream shell with Korean-safe headline and moodboard image', async () => {
+  test('renders the soft album dream shell with Korean-safe headline and moodboard image under StrictMode without duplicate initial requests', async () => {
     fetchMock
       .mockResolvedValueOnce(createJsonResponse([]))
       .mockResolvedValueOnce(createJsonResponse([]))
       .mockResolvedValueOnce(createJsonResponse([]))
       .mockResolvedValueOnce(createJsonResponse([]))
 
-    render(<App />)
+    render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    )
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
 

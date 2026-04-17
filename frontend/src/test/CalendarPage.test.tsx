@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { resetApiGetCacheForTests } from '../api/client'
 import { CalendarPage } from '../features/calendar/CalendarPage'
 
 const fetchMock = vi.fn()
@@ -69,6 +70,7 @@ function mockInitialLookups() {
 describe('CalendarPage', () => {
   beforeEach(() => {
     fetchMock.mockReset()
+    resetApiGetCacheForTests()
   })
 
   afterEach(() => {

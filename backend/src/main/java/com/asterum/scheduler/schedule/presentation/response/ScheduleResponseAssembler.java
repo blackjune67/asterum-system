@@ -1,5 +1,6 @@
 package com.asterum.scheduler.schedule.presentation.response;
 
+import com.asterum.scheduler.schedule.application.ScheduleMonthView;
 import com.asterum.scheduler.participant.domain.Participant;
 import com.asterum.scheduler.participant.presentation.response.ParticipantResponse;
 import com.asterum.scheduler.resource.presentation.response.ResourceResponse;
@@ -55,6 +56,55 @@ public class ScheduleResponseAssembler {
             occurrence.getEndTime(),
             occurrence.getSeries() != null,
             occurrence.isException(),
+            participants.stream().map(ParticipantResponse::id).toList(),
+            participants,
+            teams.stream().map(TeamResponse::id).toList(),
+            teams,
+            resource,
+            recurrence
+        );
+    }
+
+    public ScheduleResponse toResponse(ScheduleMonthView view) {
+        List<ParticipantResponse> participants = view.participants().stream()
+            .map(participant -> new ParticipantResponse(participant.id(), participant.name(), participant.type()))
+            .toList();
+
+        List<TeamResponse> teams = view.teams().stream()
+            .map(team -> new TeamResponse(
+                team.id(),
+                team.name(),
+                team.members().stream().map(ScheduleMonthView.ParticipantView::id).toList(),
+                team.members().stream()
+                    .map(member -> new ParticipantResponse(member.id(), member.name(), member.type()))
+                    .toList()
+            ))
+            .toList();
+
+        ScheduleResponse.RecurrenceSummary recurrence = view.recurrence() == null
+            ? null
+            : new ScheduleResponse.RecurrenceSummary(
+                view.recurrence().type(),
+                view.recurrence().interval(),
+                view.recurrence().endType(),
+                view.recurrence().untilDate(),
+                view.recurrence().count(),
+                view.recurrence().anchorDate()
+            );
+
+        ResourceResponse resource = view.resource() == null
+            ? null
+            : new ResourceResponse(view.resource().id(), view.resource().name(), view.resource().category());
+
+        return new ScheduleResponse(
+            view.id(),
+            view.seriesId(),
+            view.title(),
+            view.date(),
+            view.startTime(),
+            view.endTime(),
+            view.isRecurring(),
+            view.isException(),
             participants.stream().map(ParticipantResponse::id).toList(),
             participants,
             teams.stream().map(TeamResponse::id).toList(),

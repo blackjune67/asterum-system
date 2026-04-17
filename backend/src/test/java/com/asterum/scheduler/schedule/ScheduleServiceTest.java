@@ -26,8 +26,12 @@ import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
@@ -57,6 +61,12 @@ class ScheduleServiceTest {
 
     @Autowired
     private ScheduleResponseAssembler scheduleResponseAssembler;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @BeforeEach
     void cleanSchedules() {
@@ -448,6 +458,59 @@ class ScheduleServiceTest {
         assertThat(listMonth(2026, 5)).isEmpty();
     }
 
+    @Test
+    void monthReadUsesStableSmallQueryCountEvenWhenOccurrenceCountGrows() {
+        Long choreographyTeamId = teamRepository.findAll().stream()
+            .filter(team -> team.getName().equals("안무팀"))
+            .map(Team::getId)
+            .findFirst()
+            .orElseThrow();
+        Long resourceId = resourceRepository.findAll().stream()
+            .filter(resource -> resource.getName().equals("메인 스튜디오"))
+            .map(resource -> resource.getId())
+            .findFirst()
+            .orElseThrow();
+
+        scheduleCommandService.create(new CreateScheduleRequest(
+            "4월 촬영 1",
+            LocalDate.of(2026, 4, 10),
+            LocalTime.of(10, 0),
+            LocalTime.of(12, 0),
+            List.of(5L),
+            List.of(choreographyTeamId),
+            resourceId,
+            null
+        ).toCommand());
+
+        long singleOccurrenceQueries = measureMonthReadQueryCount(2026, 4);
+
+        scheduleCommandService.create(new CreateScheduleRequest(
+            "4월 촬영 2",
+            LocalDate.of(2026, 4, 11),
+            LocalTime.of(10, 0),
+            LocalTime.of(12, 0),
+            List.of(6L),
+            List.of(choreographyTeamId),
+            resourceId,
+            null
+        ).toCommand());
+        scheduleCommandService.create(new CreateScheduleRequest(
+            "4월 촬영 3",
+            LocalDate.of(2026, 4, 12),
+            LocalTime.of(10, 0),
+            LocalTime.of(12, 0),
+            List.of(7L),
+            List.of(choreographyTeamId),
+            resourceId,
+            null
+        ).toCommand());
+
+        long threeOccurrenceQueries = measureMonthReadQueryCount(2026, 4);
+
+        assertThat(singleOccurrenceQueries).isLessThanOrEqualTo(4);
+        assertThat(threeOccurrenceQueries).isLessThanOrEqualTo(4);
+    }
+
     private ScheduleResponse toResponse(com.asterum.scheduler.schedule.domain.ScheduleOccurrence occurrence) {
         return scheduleResponseAssembler.toResponse(occurrence);
     }
@@ -456,5 +519,19 @@ class ScheduleServiceTest {
         return scheduleQueryService.listMonth(year, month).stream()
             .map(scheduleResponseAssembler::toResponse)
             .toList();
+    }
+
+    private long measureMonthReadQueryCount(int year, int month) {
+        SessionFactory sessionFactory = entityManagerFactory.unwrap(SessionFactory.class);
+        Statistics statistics = sessionFactory.getStatistics();
+        statistics.setStatisticsEnabled(true);
+
+        entityManager.flush();
+        entityManager.clear();
+        statistics.clear();
+
+        listMonth(year, month);
+
+        return statistics.getPrepareStatementCount();
     }
 }
