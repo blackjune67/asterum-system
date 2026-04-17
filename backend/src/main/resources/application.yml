@@ -1,6 +1,7 @@
 spring:
   application:
-    name: asterum-backend
+    name: ASTERUM-SYSTEM-BACKEND
+    version: v.1.0.0
   datasource:
     url: jdbc:h2:file:./data/asterum;MODE=PostgreSQL
     driver-class-name: org.h2.Driver
@@ -13,9 +14,19 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        use_sql_comments: true
+    show-sql: true
   h2:
     console:
       enabled: true
+
+logging:
+  level:
+    org:
+      hibernate:
+        orm:
+          jdbc:
+            bind: trace
 
 server:
   port: 8083
