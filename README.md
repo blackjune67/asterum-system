@@ -10,6 +10,8 @@ Integrated scheduler MVP for one-time and recurring production schedules.
 ## Docs
 
 - Main implementation plan: `docs/implementation_plan.md`
+- Rule index: `docs/rules/README.md`
+- Test review guide: `docs/test_review/README.md`
 - Agent/assistant reference copies:
   - `.agents/docs/`
   - `.claude/docs/`
