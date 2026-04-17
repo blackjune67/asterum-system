@@ -2,12 +2,12 @@ package com.asterum.scheduler.bootstrap;
 
 import com.asterum.scheduler.participant.domain.Participant;
 import com.asterum.scheduler.participant.domain.ParticipantType;
-import com.asterum.scheduler.participant.repository.ParticipantRepository;
+import com.asterum.scheduler.participant.infrastructure.persistence.ParticipantRepository;
 import com.asterum.scheduler.resource.domain.Resource;
-import com.asterum.scheduler.resource.repository.ResourceRepository;
+import com.asterum.scheduler.resource.infrastructure.persistence.ResourceRepository;
 import com.asterum.scheduler.team.domain.Team;
 import com.asterum.scheduler.team.domain.TeamMember;
-import com.asterum.scheduler.team.repository.TeamRepository;
+import com.asterum.scheduler.team.infrastructure.persistence.TeamRepository;
 import java.util.List;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;

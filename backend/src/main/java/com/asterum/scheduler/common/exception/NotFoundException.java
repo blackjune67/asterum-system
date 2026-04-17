@@ -1,8 +1,8 @@
 package com.asterum.scheduler.common.exception;
 
-public class NotFoundException extends RuntimeException {
+public class NotFoundException extends ApiException {
 
-    public NotFoundException(String message) {
-        super(message);
+    public NotFoundException(ErrorCode errorCode, Object... args) {
+        super(errorCode, args);
     }
 }

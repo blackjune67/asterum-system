@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.asterum.scheduler.common.exception.BadRequestException;
 import com.asterum.scheduler.resource.domain.Resource;
-import com.asterum.scheduler.resource.repository.ResourceRepository;
+import com.asterum.scheduler.resource.infrastructure.persistence.ResourceRepository;
+import com.asterum.scheduler.schedule.application.ScheduleCommandService;
 import com.asterum.scheduler.schedule.domain.ScheduleOccurrence;
-import com.asterum.scheduler.schedule.dto.CreateScheduleRequest;
-import com.asterum.scheduler.schedule.repository.ScheduleOccurrenceRepository;
-import com.asterum.scheduler.schedule.repository.ScheduleSeriesRepository;
-import com.asterum.scheduler.schedule.service.ScheduleService;
+import com.asterum.scheduler.schedule.presentation.request.CreateScheduleRequest;
+import com.asterum.scheduler.schedule.infrastructure.persistence.ScheduleOccurrenceRepository;
+import com.asterum.scheduler.schedule.infrastructure.persistence.ScheduleSeriesRepository;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -30,7 +30,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 class ScheduleConcurrencyTest {
 
     @Autowired
-    private ScheduleService scheduleService;
+    private ScheduleCommandService scheduleCommandService;
 
     @Autowired
     private ResourceRepository resourceRepository;
@@ -97,7 +97,7 @@ class ScheduleConcurrencyTest {
 
         Future<Throwable> secondFuture = executorService.submit(() -> {
             try {
-                scheduleService.create(new CreateScheduleRequest(
+                scheduleCommandService.create(new CreateScheduleRequest(
                     "충돌 일정",
                     LocalDate.of(2026, 4, 21),
                     LocalTime.of(11, 0),
@@ -106,7 +106,7 @@ class ScheduleConcurrencyTest {
                     null,
                     resourceId,
                     null
-                ));
+                ).toCommand());
                 return null;
             } catch (Throwable throwable) {
                 return throwable;
@@ -123,6 +123,6 @@ class ScheduleConcurrencyTest {
 
         assertThat(throwable)
             .isInstanceOf(BadRequestException.class)
-            .hasMessageContaining("Resource collision");
+            .hasMessageContaining("리소스 예약 충돌");
     }
 }

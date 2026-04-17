@@ -2,9 +2,9 @@ package com.asterum.scheduler.schedule;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.asterum.scheduler.schedule.domain.RecurrenceGenerator;
 import com.asterum.scheduler.schedule.domain.RecurrenceType;
 import com.asterum.scheduler.schedule.domain.SeriesEndType;
-import com.asterum.scheduler.schedule.service.RecurrenceGenerator;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 

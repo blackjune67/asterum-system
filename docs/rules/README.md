@@ -35,16 +35,18 @@
 ### 레이어 기준
 
 - DDD와 SOLID를 기본 설계 원칙으로 사용한다.
-- `controller`: HTTP, validation entry, status code, serialization
-- `service` 또는 application layer: 유스케이스, orchestration, transaction boundary
+- 도메인 모듈 기본 패키지 구조는 `presentation / application / domain / infrastructure`다.
+- `presentation`: HTTP entry, validation entry, request/response mapping, serialization
+- `application`: 유스케이스, orchestration, transaction boundary
 - `domain`: 상태, 규칙, 도메인 행위
-- `repository`: 영속성 접근
+- `infrastructure`: 영속성 접근, 프레임워크/외부 시스템 연동
+- `infrastructure.persistence`: Spring Data repository, JPA query, persistence adapter
 
 ### 백엔드 필수 추가 규칙
 
-- 비즈니스 규칙을 controller에 두지 않는다.
-- repository는 정책 판단을 수행하지 않는다.
-- 입력 검증은 API 경계에서 수행하고 핵심 불변식은 서비스/도메인에서 다시 보장한다.
+- 비즈니스 규칙을 `presentation`에 두지 않는다.
+- `infrastructure.persistence` repository는 정책 판단을 수행하지 않는다.
+- 입력 검증은 API 경계에서 수행하고 핵심 불변식은 `application`/`domain`에서 다시 보장한다.
 - 트랜잭션 경계는 명시적으로 관리한다.
 
 ### 에러 응답

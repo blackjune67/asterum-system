@@ -1,5 +1,7 @@
 package com.asterum.scheduler.schedule.domain;
 
+import com.asterum.scheduler.common.exception.BadRequestException;
+import com.asterum.scheduler.common.exception.ErrorCode;
 import com.asterum.scheduler.resource.domain.Resource;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -78,6 +80,7 @@ public class ScheduleOccurrence {
         LocalTime endTime,
         Resource resource
     ) {
+        validateTimeRange(startTime, endTime);
         this.series = series;
         this.title = title;
         this.occurrenceDate = occurrenceDate;
@@ -135,6 +138,7 @@ public class ScheduleOccurrence {
     }
 
     public void updateSingle(String title, LocalDate date, LocalTime startTime, LocalTime endTime, Resource resource) {
+        validateTimeRange(startTime, endTime);
         this.title = title;
         this.occurrenceDate = date;
         this.startTime = startTime;
@@ -145,6 +149,7 @@ public class ScheduleOccurrence {
     }
 
     public void updateBasic(String title, LocalTime startTime, LocalTime endTime, Resource resource) {
+        validateTimeRange(startTime, endTime);
         this.title = title;
         this.startTime = startTime;
         this.endTime = endTime;
@@ -155,5 +160,11 @@ public class ScheduleOccurrence {
     public void cancel() {
         this.status = OccurrenceStatus.CANCELLED;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    private void validateTimeRange(LocalTime startTime, LocalTime endTime) {
+        if (!startTime.isBefore(endTime)) {
+            throw new BadRequestException(ErrorCode.INVALID_TIME_RANGE);
+        }
     }
 }

@@ -1,8 +1,18 @@
 const API_BASE = '/api'
 
+interface ProblemDetailsBody {
+  type?: string
+  title?: string
+  status?: number
+  detail?: string
+  instance?: string
+  code?: string
+  message?: string
+}
+
 async function createRequestError(response: Response) {
   try {
-    const body = (await response.json()) as { detail?: string; message?: string }
+    const body = (await response.json()) as ProblemDetailsBody
     if (typeof body.detail === 'string' && body.detail.length > 0) {
       return new Error(body.detail)
     }
