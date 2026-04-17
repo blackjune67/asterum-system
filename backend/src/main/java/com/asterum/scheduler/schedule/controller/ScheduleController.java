@@ -1,6 +1,7 @@
 package com.asterum.scheduler.schedule.controller;
 
 import com.asterum.scheduler.schedule.dto.CreateScheduleRequest;
+import com.asterum.scheduler.schedule.dto.RecurrenceRequest;
 import com.asterum.scheduler.schedule.dto.ScheduleResponse;
 import com.asterum.scheduler.schedule.dto.ScopeType;
 import com.asterum.scheduler.schedule.dto.UpdateScheduleRequest;
@@ -43,6 +44,12 @@ public class ScheduleController {
     @ResponseStatus(HttpStatus.CREATED)
     public ScheduleResponse create(@Valid @RequestBody CreateScheduleRequest request) {
         return scheduleService.create(request);
+    }
+
+    @PostMapping("/{id}/convert-to-series")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ScheduleResponse convertToSeries(@PathVariable Long id, @Valid @RequestBody RecurrenceRequest request) {
+        return scheduleService.convertToSeries(id, request);
     }
 
     @PutMapping("/{id}")

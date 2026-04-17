@@ -8,6 +8,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.asterum.scheduler.schedule.repository.ScheduleOccurrenceRepository;
+import com.asterum.scheduler.schedule.repository.ScheduleSeriesRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,6 +24,18 @@ class ScheduleControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ScheduleOccurrenceRepository scheduleOccurrenceRepository;
+
+    @Autowired
+    private ScheduleSeriesRepository scheduleSeriesRepository;
+
+    @BeforeEach
+    void cleanSchedules() {
+        scheduleOccurrenceRepository.deleteAll();
+        scheduleSeriesRepository.deleteAll();
+    }
 
     @Test
     void createsRecurringScheduleAndListsMonth() throws Exception {
@@ -150,5 +165,46 @@ class ScheduleControllerTest {
         mockMvc.perform(get("/api/schedules?year=2026&month=4"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void convertsOneTimeScheduleToRecurringSeriesThroughApi() throws Exception {
+        String createdBody = mockMvc.perform(post("/api/schedules")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "title": "전환 API 일정",
+                      "date": "2026-04-20",
+                      "startTime": "10:00:00",
+                      "endTime": "12:00:00",
+                      "participantIds": [1, 3]
+                    }
+                    """))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        String id = com.jayway.jsonpath.JsonPath.read(createdBody, "$.id").toString();
+
+        mockMvc.perform(post("/api/schedules/{id}/convert-to-series", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "enabled": true,
+                      "type": "WEEKLY",
+                      "interval": 1,
+                      "endType": "COUNT",
+                      "count": 3
+                    }
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.seriesId").isNumber())
+            .andExpect(jsonPath("$.recurrence.type").value("WEEKLY"))
+            .andExpect(jsonPath("$.recurrence.anchorDate").value("2026-04-20"));
+
+        mockMvc.perform(get("/api/schedules?year=2026&month=4"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(2)));
     }
 }

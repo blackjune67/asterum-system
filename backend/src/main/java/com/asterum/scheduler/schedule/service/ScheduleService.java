@@ -5,10 +5,16 @@ import com.asterum.scheduler.common.exception.NotFoundException;
 import com.asterum.scheduler.participant.domain.Participant;
 import com.asterum.scheduler.participant.dto.ParticipantResponse;
 import com.asterum.scheduler.participant.repository.ParticipantRepository;
+import com.asterum.scheduler.resource.domain.Resource;
+import com.asterum.scheduler.resource.dto.ResourceResponse;
+import com.asterum.scheduler.resource.repository.ResourceRepository;
 import com.asterum.scheduler.schedule.domain.OccurrenceStatus;
 import com.asterum.scheduler.schedule.domain.ScheduleOccurrence;
 import com.asterum.scheduler.schedule.domain.ScheduleOccurrenceParticipant;
+import com.asterum.scheduler.schedule.domain.ScheduleOccurrenceTeam;
 import com.asterum.scheduler.schedule.domain.ScheduleSeries;
+import com.asterum.scheduler.schedule.domain.ScheduleSeriesParticipant;
+import com.asterum.scheduler.schedule.domain.ScheduleSeriesTeam;
 import com.asterum.scheduler.schedule.domain.SeriesEndType;
 import com.asterum.scheduler.schedule.dto.CreateScheduleRequest;
 import com.asterum.scheduler.schedule.dto.RecurrenceRequest;
@@ -17,11 +23,19 @@ import com.asterum.scheduler.schedule.dto.ScopeType;
 import com.asterum.scheduler.schedule.dto.UpdateScheduleRequest;
 import com.asterum.scheduler.schedule.repository.ScheduleOccurrenceRepository;
 import com.asterum.scheduler.schedule.repository.ScheduleSeriesRepository;
+import com.asterum.scheduler.team.domain.Team;
+import com.asterum.scheduler.team.dto.TeamResponse;
+import com.asterum.scheduler.team.repository.TeamRepository;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,17 +44,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class ScheduleService {
 
     private final ParticipantRepository participantRepository;
+    private final TeamRepository teamRepository;
+    private final ResourceRepository resourceRepository;
     private final ScheduleSeriesRepository scheduleSeriesRepository;
     private final ScheduleOccurrenceRepository scheduleOccurrenceRepository;
     private final RecurrenceGenerator recurrenceGenerator;
 
     public ScheduleService(
         ParticipantRepository participantRepository,
+        TeamRepository teamRepository,
+        ResourceRepository resourceRepository,
         ScheduleSeriesRepository scheduleSeriesRepository,
         ScheduleOccurrenceRepository scheduleOccurrenceRepository,
         RecurrenceGenerator recurrenceGenerator
     ) {
         this.participantRepository = participantRepository;
+        this.teamRepository = teamRepository;
+        this.resourceRepository = resourceRepository;
         this.scheduleSeriesRepository = scheduleSeriesRepository;
         this.scheduleOccurrenceRepository = scheduleOccurrenceRepository;
         this.recurrenceGenerator = recurrenceGenerator;
@@ -48,22 +68,24 @@ public class ScheduleService {
 
     public ScheduleResponse create(CreateScheduleRequest request) {
         validateTimeRange(request.startTime(), request.endTime());
-        List<Participant> participants = resolveParticipants(request.participantIds());
+        List<Participant> directParticipants = resolveParticipants(request.participantIds());
+        List<Team> teams = resolveTeams(request.teamIds());
+        Resource resource = resolveResource(request.resourceId());
+        List<Participant> participantSnapshot = buildParticipantSnapshot(directParticipants, teams);
         RecurrenceRequest recurrence = request.recurrence();
 
         if (recurrence != null && recurrence.enabled()) {
             validateRecurrence(recurrence);
-            ScheduleSeries series = scheduleSeriesRepository.save(new ScheduleSeries(
+            ScheduleSeries series = createSeries(
                 request.title(),
                 request.startTime(),
                 request.endTime(),
-                recurrence.type(),
-                recurrence.interval(),
-                recurrence.endType(),
-                recurrence.untilDate(),
-                recurrence.count(),
-                request.date()
-            ));
+                resource,
+                recurrence,
+                request.date(),
+                participantSnapshot,
+                teams
+            );
 
             LocalDate horizonEnd = initialHorizon(request.date(), recurrence);
             List<LocalDate> dates = recurrenceGenerator.generateDates(
@@ -76,21 +98,76 @@ public class ScheduleService {
                 horizonEnd
             );
 
-            ScheduleOccurrence first = null;
-            for (LocalDate date : dates) {
-                ScheduleOccurrence occurrence = new ScheduleOccurrence(series, request.title(), date, request.startTime(), request.endTime());
-                attachParticipants(occurrence, participants);
-                ScheduleOccurrence saved = scheduleOccurrenceRepository.save(occurrence);
-                if (first == null) {
-                    first = saved;
-                }
-            }
+            assertNoResourceConflicts(resource, dates, request.startTime(), request.endTime(), Set.of());
+            ScheduleOccurrence first = createOccurrences(series, dates, request.title(), request.startTime(), request.endTime(), resource, participantSnapshot, teams, request.date());
             return toResponse(Objects.requireNonNull(first));
         }
 
-        ScheduleOccurrence occurrence = new ScheduleOccurrence(null, request.title(), request.date(), request.startTime(), request.endTime());
-        attachParticipants(occurrence, participants);
+        assertNoResourceConflicts(resource, List.of(request.date()), request.startTime(), request.endTime(), Set.of());
+        ScheduleOccurrence occurrence = new ScheduleOccurrence(null, request.title(), request.date(), request.startTime(), request.endTime(), resource);
+        attachOccurrenceSelections(occurrence, participantSnapshot, teams);
         return toResponse(scheduleOccurrenceRepository.save(occurrence));
+    }
+
+    public ScheduleResponse convertToSeries(Long id, RecurrenceRequest recurrence) {
+        ScheduleOccurrence occurrence = loadOccurrence(id);
+        if (occurrence.getSeries() != null) {
+            throw new BadRequestException("Recurring schedules cannot be converted again");
+        }
+        if (recurrence == null || !recurrence.enabled()) {
+            throw new BadRequestException("A recurrence rule is required");
+        }
+
+        validateRecurrence(recurrence);
+
+        List<Participant> participantSnapshot = occurrence.getParticipantLinks().stream()
+            .map(ScheduleOccurrenceParticipant::getParticipant)
+            .sorted(Comparator.comparing(Participant::getId))
+            .toList();
+        List<Team> teams = occurrence.getTeamLinks().stream()
+            .map(ScheduleOccurrenceTeam::getTeam)
+            .sorted(Comparator.comparing(Team::getId))
+            .toList();
+        Resource resource = occurrence.getResource();
+
+        ScheduleSeries series = createSeries(
+            occurrence.getTitle(),
+            occurrence.getStartTime(),
+            occurrence.getEndTime(),
+            resource,
+            recurrence,
+            occurrence.getOccurrenceDate(),
+            participantSnapshot,
+            teams
+        );
+
+        LocalDate horizonEnd = initialHorizon(occurrence.getOccurrenceDate(), recurrence);
+        List<LocalDate> dates = recurrenceGenerator.generateDates(
+            occurrence.getOccurrenceDate(),
+            recurrence.type(),
+            recurrence.interval(),
+            recurrence.endType(),
+            recurrence.untilDate(),
+            recurrence.count(),
+            horizonEnd
+        );
+
+        assertNoResourceConflicts(resource, dates, occurrence.getStartTime(), occurrence.getEndTime(), Set.of(occurrence.getId()));
+        occurrence.cancel();
+
+        ScheduleOccurrence first = createOccurrences(
+            series,
+            dates,
+            occurrence.getTitle(),
+            occurrence.getStartTime(),
+            occurrence.getEndTime(),
+            resource,
+            participantSnapshot,
+            teams,
+            occurrence.getOccurrenceDate()
+        );
+
+        return toResponse(Objects.requireNonNull(first));
     }
 
     @Transactional(readOnly = true)
@@ -134,10 +211,15 @@ public class ScheduleService {
     }
 
     private ScheduleResponse updateThis(ScheduleOccurrence occurrence, UpdateScheduleRequest request) {
-        List<Participant> participants = resolveParticipants(request.participantIds());
+        List<Participant> directParticipants = resolveParticipants(request.participantIds());
+        List<Team> teams = resolveTeams(request.teamIds());
+        Resource resource = resolveResource(request.resourceId());
+        List<Participant> participantSnapshot = buildParticipantSnapshot(directParticipants, teams);
         LocalDate date = request.date() != null ? request.date() : occurrence.getOccurrenceDate();
-        occurrence.updateSingle(request.title(), date, request.startTime(), request.endTime());
-        replaceParticipants(occurrence, participants);
+
+        assertNoResourceConflicts(resource, List.of(date), request.startTime(), request.endTime(), Set.of(occurrence.getId()));
+        occurrence.updateSingle(request.title(), date, request.startTime(), request.endTime(), resource);
+        replaceOccurrenceSelections(occurrence, participantSnapshot, teams);
         return toResponse(occurrence);
     }
 
@@ -159,21 +241,28 @@ public class ScheduleService {
             ? futureOccurrences.size()
             : originalSeries.getOccurrenceCount();
 
-        originalSeries.closeBefore(occurrence.getOccurrenceDate());
-        futureOccurrences.forEach(ScheduleOccurrence::cancel);
+        List<Participant> directParticipants = resolveParticipants(request.participantIds());
+        List<Team> teams = resolveTeams(request.teamIds());
+        Resource resource = resolveResource(request.resourceId());
+        List<Participant> participantSnapshot = buildParticipantSnapshot(directParticipants, teams);
 
-        List<Participant> participants = resolveParticipants(request.participantIds());
-        ScheduleSeries newSeries = scheduleSeriesRepository.save(new ScheduleSeries(
+        ScheduleSeries newSeries = createSeries(
             request.title(),
             request.startTime(),
             request.endTime(),
-            originalSeries.getRecurrenceType(),
-            originalSeries.getIntervalValue(),
-            originalEndType,
-            originalUntilDate,
-            remainingOccurrenceCount,
-            occurrence.getOccurrenceDate()
-        ));
+            resource,
+            new RecurrenceRequest(
+                true,
+                originalSeries.getRecurrenceType(),
+                originalSeries.getIntervalValue(),
+                originalEndType,
+                originalUntilDate,
+                remainingOccurrenceCount
+            ),
+            occurrence.getOccurrenceDate(),
+            participantSnapshot,
+            teams
+        );
 
         LocalDate horizonEnd = switch (newSeries.getEndType()) {
             case NEVER -> occurrence.getOccurrenceDate().plusMonths(6);
@@ -193,15 +282,28 @@ public class ScheduleService {
             horizonEnd
         );
 
-        ScheduleOccurrence target = null;
-        for (LocalDate date : dates) {
-            ScheduleOccurrence generated = new ScheduleOccurrence(newSeries, request.title(), date, request.startTime(), request.endTime());
-            attachParticipants(generated, participants);
-            ScheduleOccurrence saved = scheduleOccurrenceRepository.save(generated);
-            if (date.equals(occurrence.getOccurrenceDate())) {
-                target = saved;
-            }
-        }
+        assertNoResourceConflicts(
+            resource,
+            dates,
+            request.startTime(),
+            request.endTime(),
+            futureOccurrences.stream().map(ScheduleOccurrence::getId).collect(java.util.stream.Collectors.toSet())
+        );
+
+        originalSeries.closeBefore(occurrence.getOccurrenceDate());
+        futureOccurrences.forEach(ScheduleOccurrence::cancel);
+
+        ScheduleOccurrence target = createOccurrences(
+            newSeries,
+            dates,
+            request.title(),
+            request.startTime(),
+            request.endTime(),
+            resource,
+            participantSnapshot,
+            teams,
+            occurrence.getOccurrenceDate()
+        );
         return toResponse(Objects.requireNonNull(target));
     }
 
@@ -211,16 +313,32 @@ public class ScheduleService {
         }
 
         ScheduleSeries series = occurrence.getSeries();
-        List<Participant> participants = resolveParticipants(request.participantIds());
-        series.updateForAll(request.title(), request.startTime(), request.endTime());
-
-        scheduleOccurrenceRepository.findBySeriesIdAndStatusOrderByOccurrenceDateAscStartTimeAsc(series.getId(), OccurrenceStatus.ACTIVE)
-            .stream()
+        List<Participant> directParticipants = resolveParticipants(request.participantIds());
+        List<Team> teams = resolveTeams(request.teamIds());
+        Resource resource = resolveResource(request.resourceId());
+        List<Participant> participantSnapshot = buildParticipantSnapshot(directParticipants, teams);
+        List<ScheduleOccurrence> targets = scheduleOccurrenceRepository.findBySeriesIdAndStatusOrderByOccurrenceDateAscStartTimeAsc(
+                series.getId(),
+                OccurrenceStatus.ACTIVE
+            ).stream()
             .filter(item -> !item.isException())
-            .forEach(item -> {
-                item.updateBasic(request.title(), request.startTime(), request.endTime());
-                replaceParticipants(item, participants);
-            });
+            .toList();
+
+        assertNoResourceConflicts(
+            resource,
+            targets.stream().map(ScheduleOccurrence::getOccurrenceDate).toList(),
+            request.startTime(),
+            request.endTime(),
+            targets.stream().map(ScheduleOccurrence::getId).collect(java.util.stream.Collectors.toSet())
+        );
+
+        series.updateForAll(request.title(), request.startTime(), request.endTime(), resource);
+        replaceSeriesSelections(series, participantSnapshot, teams);
+
+        targets.forEach(item -> {
+            item.updateBasic(request.title(), request.startTime(), request.endTime(), resource);
+            replaceOccurrenceSelections(item, participantSnapshot, teams);
+        });
 
         return toResponse(loadOccurrence(occurrence.getId()));
     }
@@ -257,9 +375,15 @@ public class ScheduleService {
             return;
         }
 
-        List<Participant> participants = last.getParticipantLinks().stream()
-            .map(ScheduleOccurrenceParticipant::getParticipant)
+        List<Participant> participantSnapshot = series.getParticipantLinks().stream()
+            .map(ScheduleSeriesParticipant::getParticipant)
+            .sorted(Comparator.comparing(Participant::getId))
             .toList();
+        List<Team> teams = series.getTeamLinks().stream()
+            .map(ScheduleSeriesTeam::getTeam)
+            .sorted(Comparator.comparing(Team::getId))
+            .toList();
+        Resource resource = series.getResource();
         LocalDate nextDate = recurrenceGenerator.nextDate(last.getOccurrenceDate(), series.getRecurrenceType(), series.getIntervalValue());
 
         List<LocalDate> dates = recurrenceGenerator.generateDates(
@@ -272,27 +396,127 @@ public class ScheduleService {
             horizonEnd
         );
 
+        assertNoResourceConflicts(resource, dates, series.getStartTime(), series.getEndTime(), Set.of());
+        createOccurrences(series, dates, series.getTitle(), series.getStartTime(), series.getEndTime(), resource, participantSnapshot, teams, nextDate);
+    }
+
+    private ScheduleSeries createSeries(
+        String title,
+        LocalTime startTime,
+        LocalTime endTime,
+        Resource resource,
+        RecurrenceRequest recurrence,
+        LocalDate anchorDate,
+        List<Participant> participantSnapshot,
+        List<Team> teams
+    ) {
+        ScheduleSeries series = scheduleSeriesRepository.save(new ScheduleSeries(
+            title,
+            startTime,
+            endTime,
+            resource,
+            recurrence.type(),
+            recurrence.interval(),
+            recurrence.endType(),
+            recurrence.untilDate(),
+            recurrence.count(),
+            anchorDate
+        ));
+        attachSeriesSelections(series, participantSnapshot, teams);
+        return series;
+    }
+
+    private ScheduleOccurrence createOccurrences(
+        ScheduleSeries series,
+        List<LocalDate> dates,
+        String title,
+        LocalTime startTime,
+        LocalTime endTime,
+        Resource resource,
+        List<Participant> participantSnapshot,
+        List<Team> teams,
+        LocalDate targetDate
+    ) {
+        ScheduleOccurrence target = null;
         for (LocalDate date : dates) {
-            if (!scheduleOccurrenceRepository.existsBySeriesIdAndOccurrenceDateAndStartTime(series.getId(), date, series.getStartTime())) {
-                ScheduleOccurrence generated = new ScheduleOccurrence(series, series.getTitle(), date, series.getStartTime(), series.getEndTime());
-                attachParticipants(generated, participants);
-                scheduleOccurrenceRepository.save(generated);
+            if (series != null
+                && scheduleOccurrenceRepository.existsBySeriesIdAndOccurrenceDateAndStartTime(series.getId(), date, startTime)) {
+                continue;
+            }
+            ScheduleOccurrence generated = new ScheduleOccurrence(series, title, date, startTime, endTime, resource);
+            attachOccurrenceSelections(generated, participantSnapshot, teams);
+            ScheduleOccurrence saved = scheduleOccurrenceRepository.save(generated);
+            if (target == null || date.equals(targetDate)) {
+                target = saved;
             }
         }
+        return target;
+    }
+
+    private void attachSeriesSelections(ScheduleSeries series, List<Participant> participants, List<Team> teams) {
+        participants.forEach(participant -> series.getParticipantLinks().add(new ScheduleSeriesParticipant(series, participant)));
+        teams.forEach(team -> series.getTeamLinks().add(new ScheduleSeriesTeam(series, team)));
+    }
+
+    private void replaceSeriesSelections(ScheduleSeries series, List<Participant> participants, List<Team> teams) {
+        series.getParticipantLinks().clear();
+        series.getTeamLinks().clear();
+        attachSeriesSelections(series, participants, teams);
+    }
+
+    private void attachOccurrenceSelections(ScheduleOccurrence occurrence, List<Participant> participants, List<Team> teams) {
+        participants.forEach(participant -> occurrence.getParticipantLinks().add(new ScheduleOccurrenceParticipant(occurrence, participant)));
+        teams.forEach(team -> occurrence.getTeamLinks().add(new ScheduleOccurrenceTeam(occurrence, team)));
+    }
+
+    private void replaceOccurrenceSelections(ScheduleOccurrence occurrence, List<Participant> participants, List<Team> teams) {
+        occurrence.getParticipantLinks().clear();
+        occurrence.getTeamLinks().clear();
+        attachOccurrenceSelections(occurrence, participants, teams);
+    }
+
+    private void assertNoResourceConflicts(
+        Resource resource,
+        Collection<LocalDate> dates,
+        LocalTime startTime,
+        LocalTime endTime,
+        Set<Long> ignoredOccurrenceIds
+    ) {
+        if (resource == null) {
+            return;
+        }
+
+        for (LocalDate date : new LinkedHashSet<>(dates)) {
+            ScheduleOccurrence conflict = scheduleOccurrenceRepository.findByResourceIdAndOccurrenceDateAndStatus(
+                    resource.getId(),
+                    date,
+                    OccurrenceStatus.ACTIVE
+                ).stream()
+                .filter(item -> !ignoredOccurrenceIds.contains(item.getId()))
+                .filter(item -> overlaps(startTime, endTime, item.getStartTime(), item.getEndTime()))
+                .findFirst()
+                .orElse(null);
+
+            if (conflict != null) {
+                throw new BadRequestException(
+                    "Resource collision: %s is already booked on %s %s-%s".formatted(
+                        resource.getName(),
+                        date,
+                        conflict.getStartTime(),
+                        conflict.getEndTime()
+                    )
+                );
+            }
+        }
+    }
+
+    private boolean overlaps(LocalTime startTime, LocalTime endTime, LocalTime otherStart, LocalTime otherEnd) {
+        return startTime.isBefore(otherEnd) && otherStart.isBefore(endTime);
     }
 
     private ScheduleOccurrence loadOccurrence(Long id) {
         return scheduleOccurrenceRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Schedule occurrence %d not found".formatted(id)));
-    }
-
-    private void attachParticipants(ScheduleOccurrence occurrence, List<Participant> participants) {
-        participants.forEach(participant -> occurrence.getParticipantLinks().add(new ScheduleOccurrenceParticipant(occurrence, participant)));
-    }
-
-    private void replaceParticipants(ScheduleOccurrence occurrence, List<Participant> participants) {
-        occurrence.getParticipantLinks().clear();
-        attachParticipants(occurrence, participants);
     }
 
     private List<Participant> resolveParticipants(List<Long> participantIds) {
@@ -305,7 +529,37 @@ public class ScheduleService {
         return participants;
     }
 
-    private void validateTimeRange(java.time.LocalTime startTime, java.time.LocalTime endTime) {
+    private List<Team> resolveTeams(List<Long> teamIds) {
+        List<Long> safeIds = teamIds == null ? List.of() : teamIds;
+        List<Team> teams = new ArrayList<>(teamRepository.findAllById(safeIds));
+        if (teams.size() != safeIds.stream().distinct().count()) {
+            throw new BadRequestException("Some teams do not exist");
+        }
+        teams.sort(Comparator.comparing(Team::getId));
+        return teams;
+    }
+
+    private Resource resolveResource(Long resourceId) {
+        if (resourceId == null) {
+            return null;
+        }
+        return resourceRepository.findById(resourceId)
+            .orElseThrow(() -> new BadRequestException("Resource does not exist"));
+    }
+
+    private List<Participant> buildParticipantSnapshot(List<Participant> participants, List<Team> teams) {
+        LinkedHashMap<Long, Participant> snapshot = new LinkedHashMap<>();
+        participants.forEach(participant -> snapshot.put(participant.getId(), participant));
+        teams.stream()
+            .flatMap(team -> team.getMembers().stream())
+            .map(member -> member.getParticipant())
+            .forEach(participant -> snapshot.putIfAbsent(participant.getId(), participant));
+        return snapshot.values().stream()
+            .sorted(Comparator.comparing(Participant::getId))
+            .toList();
+    }
+
+    private void validateTimeRange(LocalTime startTime, LocalTime endTime) {
         if (!startTime.isBefore(endTime)) {
             throw new BadRequestException("startTime must be before endTime");
         }
@@ -338,6 +592,24 @@ public class ScheduleService {
             .map(participant -> new ParticipantResponse(participant.getId(), participant.getName(), participant.getType()))
             .toList();
 
+        List<TeamResponse> teams = occurrence.getTeamLinks().stream()
+            .map(ScheduleOccurrenceTeam::getTeam)
+            .sorted(Comparator.comparing(Team::getId))
+            .map(team -> {
+                List<ParticipantResponse> members = team.getMembers().stream()
+                    .map(member -> member.getParticipant())
+                    .sorted(Comparator.comparing(Participant::getId))
+                    .map(participant -> new ParticipantResponse(participant.getId(), participant.getName(), participant.getType()))
+                    .toList();
+                return new TeamResponse(
+                    team.getId(),
+                    team.getName(),
+                    members.stream().map(ParticipantResponse::id).toList(),
+                    members
+                );
+            })
+            .toList();
+
         ScheduleResponse.RecurrenceSummary recurrence = null;
         if (occurrence.getSeries() != null) {
             ScheduleSeries series = occurrence.getSeries();
@@ -351,6 +623,14 @@ public class ScheduleService {
             );
         }
 
+        ResourceResponse resource = occurrence.getResource() == null
+            ? null
+            : new ResourceResponse(
+                occurrence.getResource().getId(),
+                occurrence.getResource().getName(),
+                occurrence.getResource().getCategory()
+            );
+
         return new ScheduleResponse(
             occurrence.getId(),
             occurrence.getSeries() != null ? occurrence.getSeries().getId() : null,
@@ -362,6 +642,9 @@ public class ScheduleService {
             occurrence.isException(),
             participants.stream().map(ParticipantResponse::id).toList(),
             participants,
+            teams.stream().map(TeamResponse::id).toList(),
+            teams,
+            resource,
             recurrence
         );
     }

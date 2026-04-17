@@ -1,5 +1,6 @@
 package com.asterum.scheduler.schedule.domain;
 
+import com.asterum.scheduler.resource.domain.Resource;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -43,6 +44,10 @@ public class ScheduleOccurrence {
     @Column(nullable = false)
     private LocalTime endTime;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "resource_id")
+    private Resource resource;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OccurrenceStatus status;
@@ -59,6 +64,9 @@ public class ScheduleOccurrence {
     @OneToMany(mappedBy = "occurrence", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ScheduleOccurrenceParticipant> participantLinks = new ArrayList<>();
 
+    @OneToMany(mappedBy = "occurrence", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ScheduleOccurrenceTeam> teamLinks = new ArrayList<>();
+
     protected ScheduleOccurrence() {
     }
 
@@ -67,13 +75,15 @@ public class ScheduleOccurrence {
         String title,
         LocalDate occurrenceDate,
         LocalTime startTime,
-        LocalTime endTime
+        LocalTime endTime,
+        Resource resource
     ) {
         this.series = series;
         this.title = title;
         this.occurrenceDate = occurrenceDate;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.resource = resource;
         this.status = OccurrenceStatus.ACTIVE;
         this.isException = false;
         this.createdAt = LocalDateTime.now();
@@ -104,6 +114,10 @@ public class ScheduleOccurrence {
         return endTime;
     }
 
+    public Resource getResource() {
+        return resource;
+    }
+
     public OccurrenceStatus getStatus() {
         return status;
     }
@@ -116,19 +130,25 @@ public class ScheduleOccurrence {
         return participantLinks;
     }
 
-    public void updateSingle(String title, LocalDate date, LocalTime startTime, LocalTime endTime) {
+    public List<ScheduleOccurrenceTeam> getTeamLinks() {
+        return teamLinks;
+    }
+
+    public void updateSingle(String title, LocalDate date, LocalTime startTime, LocalTime endTime, Resource resource) {
         this.title = title;
         this.occurrenceDate = date;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.resource = resource;
         this.isException = true;
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void updateBasic(String title, LocalTime startTime, LocalTime endTime) {
+    public void updateBasic(String title, LocalTime startTime, LocalTime endTime, Resource resource) {
         this.title = title;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.resource = resource;
         this.updatedAt = LocalDateTime.now();
     }
 

@@ -12,6 +12,8 @@ test('shows recurrence fields when recurring is enabled', async () => {
       mode="create"
       selectedDate="2026-04-20"
       participants={[]}
+      teams={[]}
+      resources={[]}
       onClose={() => {}}
       onSubmit={async () => {}}
     />,
@@ -31,6 +33,8 @@ test('resets create form fields when reopened with a new selected date', async (
       mode="create"
       selectedDate="2026-04-20"
       participants={[]}
+      teams={[]}
+      resources={[]}
       onClose={() => {}}
       onSubmit={async () => {}}
     />,
@@ -44,6 +48,8 @@ test('resets create form fields when reopened with a new selected date', async (
       mode="create"
       selectedDate="2026-04-20"
       participants={[]}
+      teams={[]}
+      resources={[]}
       onClose={() => {}}
       onSubmit={async () => {}}
     />,
@@ -55,6 +61,8 @@ test('resets create form fields when reopened with a new selected date', async (
       mode="create"
       selectedDate="2026-04-25"
       participants={[]}
+      teams={[]}
+      resources={[]}
       onClose={() => {}}
       onSubmit={async () => {}}
     />,
@@ -76,6 +84,9 @@ test('loads edit mode values from the selected item', () => {
     isException: false,
     participantIds: [2],
     participants: [],
+    teamIds: [7],
+    teams: [{ id: 7, name: '비주얼팀', memberIds: [4, 5], members: [] }],
+    resource: { id: 3, name: '회의실 A', category: 'ROOM' },
     recurrence: {
       type: 'WEEKLY',
       interval: 2,
@@ -92,6 +103,8 @@ test('loads edit mode values from the selected item', () => {
       mode="edit"
       selectedDate="2026-04-20"
       participants={[]}
+      teams={[]}
+      resources={[{ id: 3, name: '회의실 A', category: 'ROOM' }]}
       initialItem={initialItem}
       onClose={() => {}}
       onSubmit={async () => {}}
@@ -102,4 +115,5 @@ test('loads edit mode values from the selected item', () => {
   expect(screen.getByLabelText('날짜')).toHaveValue('2026-04-23')
   expect(screen.getByLabelText('시작 시간')).toHaveValue('09:30')
   expect(screen.getByLabelText('종료 시간')).toHaveValue('11:00')
+  expect(screen.getByLabelText('리소스')).toHaveValue('3')
 })

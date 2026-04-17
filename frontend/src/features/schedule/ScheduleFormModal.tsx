@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { ParticipantSelect } from '../participant/ParticipantSelect'
 import type { Participant } from '../../types/participant'
+import { TeamSelect } from '../team/TeamSelect'
+import type { ResourceItem } from '../../types/resource'
+import type { Team } from '../../types/team'
 import type { RecurrenceType, ScheduleCreatePayload, ScheduleItem, ScheduleUpdatePayload, SeriesEndType } from '../../types/schedule'
 import { normalizeTime, toApiTime } from './dateUtils'
 
@@ -9,7 +12,10 @@ interface Props {
   mode: 'create' | 'edit'
   selectedDate: string
   participants: Participant[]
+  teams: Team[]
+  resources: ResourceItem[]
   initialItem?: ScheduleItem | null
+  error?: string | null
   onClose: () => void
   onSubmit: (payload: ScheduleCreatePayload | ScheduleUpdatePayload) => Promise<void>
 }
@@ -20,6 +26,8 @@ interface FormState {
   startTime: string
   endTime: string
   participantIds: number[]
+  teamIds: number[]
+  resourceId: number | null
   recurring: boolean
   recurrenceType: RecurrenceType
   interval: number
@@ -36,6 +44,8 @@ function buildInitialFormState(mode: Props['mode'], selectedDate: string, initia
       startTime: normalizeTime(initialItem.startTime),
       endTime: normalizeTime(initialItem.endTime),
       participantIds: initialItem.participantIds,
+      teamIds: initialItem.teamIds,
+      resourceId: initialItem.resource?.id ?? null,
       recurring: initialItem.isRecurring,
       recurrenceType: initialItem.recurrence?.type ?? 'WEEKLY',
       interval: initialItem.recurrence?.interval ?? 1,
@@ -51,6 +61,8 @@ function buildInitialFormState(mode: Props['mode'], selectedDate: string, initia
     startTime: '10:00',
     endTime: '12:00',
     participantIds: [],
+    teamIds: [],
+    resourceId: null,
     recurring: false,
     recurrenceType: 'WEEKLY',
     interval: 1,
@@ -65,7 +77,10 @@ export function ScheduleFormModal({
   mode,
   selectedDate,
   participants,
+  teams,
+  resources,
   initialItem,
+  error,
   onClose,
   onSubmit,
 }: Props) {
@@ -88,6 +103,8 @@ export function ScheduleFormModal({
         startTime: toApiTime(form.startTime),
         endTime: toApiTime(form.endTime),
         participantIds: form.participantIds,
+        teamIds: form.teamIds,
+        resourceId: form.resourceId,
         recurrence: form.recurring
           ? {
               enabled: true,
@@ -109,6 +126,8 @@ export function ScheduleFormModal({
       startTime: toApiTime(form.startTime),
       endTime: toApiTime(form.endTime),
       participantIds: form.participantIds,
+      teamIds: form.teamIds,
+      resourceId: form.resourceId,
     }
 
     await onSubmit(payload)
@@ -128,6 +147,8 @@ export function ScheduleFormModal({
         </div>
 
         <form className="mt-6 grid gap-5" onSubmit={handleSubmit}>
+          {error && <p className="dream-card px-4 py-3 text-sm text-rose-700">{error}</p>}
+
           <label className="grid gap-2">
             <span className="text-sm font-medium text-plum">제목</span>
             <input
@@ -182,6 +203,41 @@ export function ScheduleFormModal({
               }
             />
           </div>
+
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-plum">팀</span>
+            <TeamSelect
+              teams={teams}
+              selectedIds={form.teamIds}
+              onChange={(teamIds) =>
+                setForm((current) => ({
+                  ...current,
+                  teamIds: typeof teamIds === 'function' ? teamIds(current.teamIds) : teamIds,
+                }))
+              }
+            />
+          </div>
+
+          <label className="grid gap-2">
+            <span className="text-sm font-medium text-plum">리소스</span>
+            <select
+              className="dream-field"
+              value={form.resourceId ?? ''}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  resourceId: event.target.value ? Number(event.target.value) : null,
+                }))
+              }
+            >
+              <option value="">선택 안 함</option>
+              {resources.map((resource) => (
+                <option key={resource.id} value={resource.id}>
+                  {resource.name} ({resource.category})
+                </option>
+              ))}
+            </select>
+          </label>
 
           {mode === 'create' && (
             <div className="dream-card grid gap-4 p-4">
