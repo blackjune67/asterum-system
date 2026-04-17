@@ -35,12 +35,12 @@ public class SeedDataInitializer {
                     new Participant("촬영팀", ParticipantType.STAFF)
                 ));
 
-                Team performanceTeam = new Team("퍼포먼스팀");
+                Team performanceTeam = new Team("안무팀");
                 performanceTeam.addMember(new TeamMember(performanceTeam, participants.get(0)));
                 performanceTeam.addMember(new TeamMember(performanceTeam, participants.get(1)));
                 performanceTeam.addMember(new TeamMember(performanceTeam, participants.get(2)));
 
-                Team visualTeam = new Team("비주얼팀");
+                Team visualTeam = new Team("영상팀");
                 visualTeam.addMember(new TeamMember(visualTeam, participants.get(3)));
                 visualTeam.addMember(new TeamMember(visualTeam, participants.get(4)));
 
