@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CalendarPage } from '../features/calendar/CalendarPage'
 
@@ -22,6 +22,50 @@ function createDeferredResponse() {
   return { promise, resolve }
 }
 
+function createScheduleItem(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 1,
+    seriesId: null,
+    title: 'Shoot',
+    date: '2026-04-15',
+    startTime: '10:00:00',
+    endTime: '12:00:00',
+    isRecurring: false,
+    isException: false,
+    participantIds: [],
+    participants: [],
+    teamIds: [],
+    teams: [],
+    resource: null,
+    recurrence: null,
+    ...overrides,
+  }
+}
+
+function createParticipant(id: number, name: string, type: 'MEMBER' | 'STAFF') {
+  return { id, name, type }
+}
+
+function createTeam(id: number, name: string, members = [createParticipant(1, '하민', 'MEMBER')]) {
+  return {
+    id,
+    name,
+    memberIds: members.map((member) => member.id),
+    members,
+  }
+}
+
+function createResource(id: number, name: string, category: string) {
+  return { id, name, category }
+}
+
+function mockInitialLookups() {
+  fetchMock
+    .mockResolvedValueOnce(createJsonResponse([createParticipant(1, '하민', 'MEMBER')]))
+    .mockResolvedValueOnce(createJsonResponse([createTeam(7, '비주얼팀')]))
+    .mockResolvedValueOnce(createJsonResponse([createResource(3, '회의실 A', 'ROOM')]))
+}
+
 describe('CalendarPage', () => {
   beforeEach(() => {
     fetchMock.mockReset()
@@ -32,103 +76,69 @@ describe('CalendarPage', () => {
   })
 
   test('renders current month heading and create button', async () => {
-    fetchMock
-      .mockResolvedValueOnce(createJsonResponse([]))
-      .mockResolvedValueOnce(createJsonResponse([]))
+    fetchMock.mockResolvedValueOnce(createJsonResponse([]))
+    mockInitialLookups()
 
     render(<CalendarPage />)
 
     expect(screen.getByRole('button', { name: '일정 등록' })).toBeInTheDocument()
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
   })
 
   test('keeps the latest month data when an earlier request resolves late', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-04-15T09:00:00'))
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const aprilSchedules = createDeferredResponse()
 
-    fetchMock
-      .mockImplementationOnce(() => aprilSchedules.promise)
-      .mockResolvedValueOnce(createJsonResponse([]))
-      .mockResolvedValueOnce(
-        createJsonResponse([
-          {
-            id: 2,
-            seriesId: null,
-            title: 'May shoot',
-            date: '2026-05-02',
-            startTime: '10:00:00',
-            endTime: '12:00:00',
-            isRecurring: false,
-            isException: false,
-            participantIds: [],
-            participants: [],
-            recurrence: null,
-          },
-        ]),
-      )
-      .mockResolvedValueOnce(createJsonResponse([]))
-
-    render(<CalendarPage />)
-
-    await user.click(screen.getByRole('button', { name: '다음 달' }))
-
-    expect(await screen.findByText('May shoot')).toBeInTheDocument()
-
-    aprilSchedules.resolve(
+    fetchMock.mockImplementationOnce(() => aprilSchedules.promise)
+    mockInitialLookups()
+    fetchMock.mockResolvedValueOnce(
       createJsonResponse([
-        {
-          id: 1,
-          seriesId: null,
-          title: 'April shoot',
-          date: '2026-04-15',
-          startTime: '09:00:00',
-          endTime: '10:00:00',
-          isRecurring: false,
-          isException: false,
-          participantIds: [],
-          participants: [],
-          recurrence: null,
-        },
+        createScheduleItem({
+          id: 2,
+          title: 'May shoot',
+          date: '2026-05-02',
+        }),
       ]),
     )
 
-    await Promise.resolve()
+    render(<CalendarPage />)
 
-    await waitFor(() => {
-      expect(screen.getByText('May shoot')).toBeInTheDocument()
-      expect(screen.queryByText('April shoot')).not.toBeInTheDocument()
+    await act(async () => {
+      screen.getByRole('button', { name: '다음 달' }).click()
+      await Promise.resolve()
+      await Promise.resolve()
     })
+
+    expect(screen.getByText('May shoot')).toBeInTheDocument()
+
+    await act(async () => {
+      aprilSchedules.resolve(
+        createJsonResponse([
+          createScheduleItem({
+            id: 9,
+            title: 'April shoot',
+          }),
+        ]),
+      )
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('May shoot')).toBeInTheDocument()
+    expect(screen.queryByText('April shoot')).not.toBeInTheDocument()
   })
 
   test('shows a detail error when loading the selected item fails', async () => {
     const user = userEvent.setup()
 
-    fetchMock
-      .mockResolvedValueOnce(
-        createJsonResponse([
-          {
-            id: 1,
-            seriesId: null,
-            title: 'Shoot',
-            date: '2026-04-15',
-            startTime: '10:00:00',
-            endTime: '12:00:00',
-            isRecurring: false,
-            isException: false,
-            participantIds: [],
-            participants: [],
-            recurrence: null,
-          },
-        ]),
-      )
-      .mockResolvedValueOnce(createJsonResponse([]))
-      .mockResolvedValueOnce(createJsonResponse({}, false, 500))
+    fetchMock.mockResolvedValueOnce(createJsonResponse([createScheduleItem()]))
+    mockInitialLookups()
+    fetchMock.mockResolvedValueOnce(createJsonResponse({}, false, 500))
 
     render(<CalendarPage />)
 
-    await user.click(await screen.findByRole('button', { name: 'Shoot' }))
+    await user.click(await screen.findByRole('button', { name: /Shoot/ }))
 
     expect(await screen.findByText('일정 상세 정보를 불러오지 못했습니다.')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Shoot' })).not.toBeInTheDocument()
@@ -137,14 +147,8 @@ describe('CalendarPage', () => {
   test('opens the create modal from a calendar day selection', async () => {
     const user = userEvent.setup()
 
-    fetchMock
-      .mockResolvedValueOnce(createJsonResponse([]))
-      .mockResolvedValueOnce(
-        createJsonResponse([
-          { id: 1, name: '하민', type: 'MEMBER' },
-          { id: 3, name: '촬영팀', type: 'STAFF' },
-        ]),
-      )
+    fetchMock.mockResolvedValueOnce(createJsonResponse([]))
+    mockInitialLookups()
 
     render(<CalendarPage />)
 
@@ -152,68 +156,112 @@ describe('CalendarPage', () => {
 
     expect(screen.getByRole('heading', { name: '일정 등록' })).toBeInTheDocument()
     expect(screen.getByLabelText('날짜')).toHaveValue('2026-04-15')
+    expect(screen.getByLabelText('리소스')).toHaveValue('')
   })
 
   test('asks for a delete scope when removing a recurring schedule', async () => {
     const user = userEvent.setup()
 
-    fetchMock
-      .mockResolvedValueOnce(
-        createJsonResponse([
-          {
-            id: 1,
-            seriesId: 11,
-            title: 'Recurring shoot',
-            date: '2026-04-15',
-            startTime: '10:00:00',
-            endTime: '12:00:00',
-            isRecurring: true,
-            isException: false,
-            participantIds: [1],
-            participants: [{ id: 1, name: '하민', type: 'MEMBER' }],
-            recurrence: {
-              type: 'WEEKLY',
-              interval: 1,
-              endType: 'COUNT',
-              untilDate: null,
-              count: 3,
-              anchorDate: '2026-04-15',
-            },
-          },
-        ]),
-      )
-      .mockResolvedValueOnce(createJsonResponse([{ id: 1, name: '하민', type: 'MEMBER' }]))
-      .mockResolvedValueOnce(
-        createJsonResponse({
-          id: 1,
-          seriesId: 11,
-          title: 'Recurring shoot',
-          date: '2026-04-15',
-          startTime: '10:00:00',
-          endTime: '12:00:00',
-          isRecurring: true,
-          isException: false,
-          participantIds: [1],
-          participants: [{ id: 1, name: '하민', type: 'MEMBER' }],
-          recurrence: {
-            type: 'WEEKLY',
-            interval: 1,
-            endType: 'COUNT',
-            untilDate: null,
-            count: 3,
-            anchorDate: '2026-04-15',
-          },
-        }),
-      )
+    const recurringItem = createScheduleItem({
+      seriesId: 11,
+      title: 'Recurring shoot',
+      isRecurring: true,
+      participantIds: [1],
+      participants: [createParticipant(1, '하민', 'MEMBER')],
+      recurrence: {
+        type: 'WEEKLY',
+        interval: 1,
+        endType: 'COUNT',
+        untilDate: null,
+        count: 3,
+        anchorDate: '2026-04-15',
+      },
+    })
+
+    fetchMock.mockResolvedValueOnce(createJsonResponse([recurringItem]))
+    mockInitialLookups()
+    fetchMock.mockResolvedValueOnce(createJsonResponse(recurringItem))
 
     render(<CalendarPage />)
 
-    await user.click(await screen.findByRole('button', { name: 'Recurring shoot' }))
+    await user.click(await screen.findByRole('button', { name: /Recurring shoot/ }))
     await user.click(await screen.findByRole('button', { name: '삭제' }))
 
     expect(await screen.findByRole('heading', { name: '삭제 범위 선택' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '해당 일정만' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '이후 모든 일정' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '전체 일정' })).toBeInTheDocument()
+  })
+
+  test('converts a one-time schedule into a recurring series from the detail modal', async () => {
+    const user = userEvent.setup()
+
+    const oneTimeItem = createScheduleItem({
+      title: 'One-time shoot',
+      participantIds: [1],
+      participants: [createParticipant(1, '하민', 'MEMBER')],
+      teamIds: [7],
+      teams: [createTeam(7, '비주얼팀')],
+      resource: createResource(3, '회의실 A', 'ROOM'),
+    })
+    const convertedItem = createScheduleItem({
+      id: 2,
+      seriesId: 42,
+      title: 'One-time shoot',
+      isRecurring: true,
+      participantIds: [1],
+      participants: [createParticipant(1, '하민', 'MEMBER')],
+      teamIds: [7],
+      teams: [createTeam(7, '비주얼팀')],
+      resource: createResource(3, '회의실 A', 'ROOM'),
+      recurrence: {
+        type: 'MONTHLY',
+        interval: 1,
+        endType: 'COUNT',
+        untilDate: null,
+        count: 4,
+        anchorDate: '2026-04-15',
+      },
+    })
+
+    fetchMock.mockResolvedValueOnce(createJsonResponse([oneTimeItem]))
+    mockInitialLookups()
+    fetchMock.mockResolvedValueOnce(createJsonResponse(oneTimeItem))
+    fetchMock.mockResolvedValueOnce(createJsonResponse(convertedItem))
+    fetchMock.mockResolvedValueOnce(createJsonResponse([convertedItem]))
+
+    render(<CalendarPage />)
+
+    await user.click(await screen.findByRole('button', { name: /One-time shoot/ }))
+    await user.click(await screen.findByRole('button', { name: '반복 일정으로 전환' }))
+
+    expect(await screen.findByRole('heading', { name: '반복 일정 전환' })).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('반복 유형'), 'MONTHLY')
+    await user.clear(screen.getByLabelText('반복 횟수'))
+    await user.type(screen.getByLabelText('반복 횟수'), '4')
+    await user.click(screen.getByRole('button', { name: '전환하기' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/schedules/1/convert-to-series',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            enabled: true,
+            type: 'MONTHLY',
+            interval: 1,
+            endType: 'COUNT',
+            untilDate: null,
+            count: 4,
+          }),
+        }),
+      )
+    })
+
+    expect(await screen.findByText('Recurring Schedule')).toBeInTheDocument()
+    expect(screen.getByText('리소스: 회의실 A')).toBeInTheDocument()
+    expect(screen.getByText('비주얼팀 (1명)')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '반복 일정 전환' })).not.toBeInTheDocument()
   })
 })

@@ -5,6 +5,7 @@ import { monthLabel } from '../schedule/dateUtils'
 import { ScheduleDetailModal } from '../schedule/ScheduleDetailModal'
 import { ScheduleFormModal } from '../schedule/ScheduleFormModal'
 import { ScopePickerModal } from '../schedule/ScopePickerModal'
+import { ScheduleConvertModal } from '../schedule/ScheduleConvertModal'
 
 export function CalendarPage() {
   const state = useCalendarState()
@@ -103,7 +104,10 @@ export function CalendarPage() {
         mode={state.formMode}
         selectedDate={state.selectedDate}
         participants={state.participants}
+        teams={state.teams}
+        resources={state.resources}
         initialItem={state.selectedItem}
+        error={state.formError}
         onClose={state.closeForm}
         onSubmit={state.formMode === 'create' ? state.submitCreate : state.submitEdit}
       />
@@ -112,7 +116,16 @@ export function CalendarPage() {
         item={state.detailOpen ? state.selectedItem : null}
         onClose={state.closeDetail}
         onEdit={state.startEdit}
+        onConvert={state.openConvert}
         onDelete={state.handleDelete}
+      />
+
+      <ScheduleConvertModal
+        open={state.convertOpen}
+        item={state.selectedItem}
+        error={state.convertError}
+        onClose={state.closeConvert}
+        onSubmit={state.submitConvert}
       />
 
       <ScopePickerModal

@@ -14,6 +14,9 @@ const items: ScheduleItem[] = [
     isException: false,
     participantIds: [],
     participants: [],
+    teamIds: [],
+    teams: [],
+    resource: null,
     recurrence: null,
   },
 ]

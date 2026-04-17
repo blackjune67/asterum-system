@@ -26,10 +26,12 @@ describe('App', () => {
     fetchMock
       .mockResolvedValueOnce(createJsonResponse([]))
       .mockResolvedValueOnce(createJsonResponse([]))
+      .mockResolvedValueOnce(createJsonResponse([]))
+      .mockResolvedValueOnce(createJsonResponse([]))
 
     render(<App />)
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
 
     expect(screen.getByText('PLAYBOOK EDITION')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '우리만의 드리미 스케줄 아카이브' })).toBeInTheDocument()

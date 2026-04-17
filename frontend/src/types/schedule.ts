@@ -1,4 +1,6 @@
 import type { Participant } from './participant'
+import type { ResourceItem } from './resource'
+import type { Team } from './team'
 
 export type RecurrenceType = 'DAILY' | 'WEEKLY' | 'MONTHLY'
 export type SeriesEndType = 'UNTIL_DATE' | 'COUNT' | 'NEVER'
@@ -24,7 +26,19 @@ export interface ScheduleItem {
   isException: boolean
   participantIds: number[]
   participants: Participant[]
+  teamIds: number[]
+  teams: Team[]
+  resource: ResourceItem | null
   recurrence: RecurrenceSummary | null
+}
+
+export interface RecurrencePayload {
+  enabled: boolean
+  type: RecurrenceType
+  interval: number
+  endType: SeriesEndType
+  untilDate?: string | null
+  count?: number | null
 }
 
 export interface ScheduleCreatePayload {
@@ -33,14 +47,9 @@ export interface ScheduleCreatePayload {
   startTime: string
   endTime: string
   participantIds: number[]
-  recurrence: {
-    enabled: boolean
-    type: RecurrenceType
-    interval: number
-    endType: SeriesEndType
-    untilDate?: string | null
-    count?: number | null
-  } | null
+  teamIds: number[]
+  resourceId: number | null
+  recurrence: RecurrencePayload | null
 }
 
 export interface ScheduleUpdatePayload {
@@ -49,4 +58,8 @@ export interface ScheduleUpdatePayload {
   startTime: string
   endTime: string
   participantIds: number[]
+  teamIds: number[]
+  resourceId: number | null
 }
+
+export type ScheduleConvertPayload = RecurrencePayload

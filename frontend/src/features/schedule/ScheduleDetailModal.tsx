@@ -5,10 +5,11 @@ interface Props {
   item: ScheduleItem | null
   onClose: () => void
   onEdit: () => void
+  onConvert: () => void
   onDelete: (scope: ScopeType) => Promise<void>
 }
 
-export function ScheduleDetailModal({ item, onClose, onEdit, onDelete }: Props) {
+export function ScheduleDetailModal({ item, onClose, onEdit, onConvert, onDelete }: Props) {
   if (!item) return null
 
   return (
@@ -31,6 +32,7 @@ export function ScheduleDetailModal({ item, onClose, onEdit, onDelete }: Props) 
           <p>
             시간: {normalizeTime(item.startTime)} - {normalizeTime(item.endTime)}
           </p>
+          {item.resource && <p>리소스: {item.resource.name}</p>}
           {item.recurrence && (
             <p>
               반복: {item.recurrence.type} / {item.recurrence.endType}
@@ -46,12 +48,29 @@ export function ScheduleDetailModal({ item, onClose, onEdit, onDelete }: Props) 
               ))}
             </ul>
           </div>
+          {item.teams.length > 0 && (
+            <div>
+              <p className="font-medium">팀</p>
+              <ul className="mt-2 grid gap-1">
+                {item.teams.map((team) => (
+                  <li key={team.id}>
+                    {team.name} ({team.members.length}명)
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="mt-6 flex gap-3">
           <button className="dream-button-primary" onClick={onEdit}>
             수정
           </button>
+          {!item.isRecurring && (
+            <button className="dream-button-secondary" onClick={onConvert}>
+              반복 일정으로 전환
+            </button>
+          )}
           <button
             className="dream-button-secondary text-rose-700"
             onClick={() => onDelete(item.isRecurring ? 'THIS' : 'THIS')}

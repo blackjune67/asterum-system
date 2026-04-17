@@ -11,6 +11,8 @@ public record UpdateScheduleRequest(
     LocalDate date,
     @NotNull LocalTime startTime,
     @NotNull LocalTime endTime,
-    List<Long> participantIds
+    List<Long> participantIds,
+    List<Long> teamIds,
+    Long resourceId
 ) {
 }

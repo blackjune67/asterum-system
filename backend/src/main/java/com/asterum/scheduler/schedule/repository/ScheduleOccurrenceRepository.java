@@ -12,24 +12,27 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ScheduleOccurrenceRepository extends JpaRepository<ScheduleOccurrence, Long> {
 
     @Override
-    @EntityGraph(attributePaths = {"series", "participantLinks", "participantLinks.participant"})
+    @EntityGraph(attributePaths = {"series", "resource"})
     Optional<ScheduleOccurrence> findById(Long id);
 
-    @EntityGraph(attributePaths = {"series", "participantLinks", "participantLinks.participant"})
+    @EntityGraph(attributePaths = {"series", "resource"})
     List<ScheduleOccurrence> findByOccurrenceDateBetweenAndStatusOrderByOccurrenceDateAscStartTimeAsc(
         LocalDate start,
         LocalDate end,
         OccurrenceStatus status
     );
 
-    @EntityGraph(attributePaths = {"series", "participantLinks", "participantLinks.participant"})
+    @EntityGraph(attributePaths = {"series", "resource"})
     List<ScheduleOccurrence> findBySeriesIdAndStatusOrderByOccurrenceDateAscStartTimeAsc(
         Long seriesId,
         OccurrenceStatus status
     );
 
+    @EntityGraph(attributePaths = {"resource"})
+    List<ScheduleOccurrence> findByResourceIdAndOccurrenceDateAndStatus(Long resourceId, LocalDate occurrenceDate, OccurrenceStatus status);
+
     boolean existsBySeriesIdAndOccurrenceDateAndStartTime(Long seriesId, LocalDate date, LocalTime startTime);
 
-    @EntityGraph(attributePaths = {"series"})
+    @EntityGraph(attributePaths = {"series", "series.resource"})
     ScheduleOccurrence findTopBySeriesIdOrderByOccurrenceDateDescStartTimeDesc(Long seriesId);
 }

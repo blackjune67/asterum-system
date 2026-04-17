@@ -1,7 +1,11 @@
 package com.asterum.scheduler.schedule;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.asterum.scheduler.common.exception.BadRequestException;
+import com.asterum.scheduler.participant.repository.ParticipantRepository;
+import com.asterum.scheduler.resource.repository.ResourceRepository;
 import com.asterum.scheduler.schedule.domain.RecurrenceType;
 import com.asterum.scheduler.schedule.domain.SeriesEndType;
 import com.asterum.scheduler.schedule.dto.CreateScheduleRequest;
@@ -12,6 +16,9 @@ import com.asterum.scheduler.schedule.dto.UpdateScheduleRequest;
 import com.asterum.scheduler.schedule.repository.ScheduleOccurrenceRepository;
 import com.asterum.scheduler.schedule.repository.ScheduleSeriesRepository;
 import com.asterum.scheduler.schedule.service.ScheduleService;
+import com.asterum.scheduler.team.domain.Team;
+import com.asterum.scheduler.team.domain.TeamMember;
+import com.asterum.scheduler.team.repository.TeamRepository;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -34,6 +41,15 @@ class ScheduleServiceTest {
     @Autowired
     private ScheduleSeriesRepository scheduleSeriesRepository;
 
+    @Autowired
+    private TeamRepository teamRepository;
+
+    @Autowired
+    private ResourceRepository resourceRepository;
+
+    @Autowired
+    private ParticipantRepository participantRepository;
+
     @BeforeEach
     void cleanSchedules() {
         scheduleOccurrenceRepository.deleteAll();
@@ -48,6 +64,8 @@ class ScheduleServiceTest {
             LocalTime.of(10, 0),
             LocalTime.of(12, 0),
             List.of(1L, 3L),
+            null,
+            null,
             null
         ));
 
@@ -63,6 +81,8 @@ class ScheduleServiceTest {
             LocalTime.of(14, 0),
             LocalTime.of(16, 0),
             List.of(1L, 4L),
+            null,
+            null,
             null
         ));
 
@@ -76,7 +96,9 @@ class ScheduleServiceTest {
             LocalDate.of(2026, 4, 17),
             LocalTime.of(15, 0),
             LocalTime.of(17, 0),
-            List.of(2L, 3L)
+            List.of(2L, 3L),
+            null,
+            null
         ));
 
         assertThat(updated.title()).isEqualTo("수정된 단건 일정");
@@ -96,6 +118,8 @@ class ScheduleServiceTest {
             LocalTime.of(8, 0),
             LocalTime.of(9, 0),
             List.of(1L, 2L),
+            null,
+            null,
             new RecurrenceRequest(true, RecurrenceType.DAILY, 1, SeriesEndType.UNTIL_DATE, LocalDate.of(2026, 4, 22), null)
         ));
 
@@ -115,6 +139,8 @@ class ScheduleServiceTest {
             LocalTime.of(10, 0),
             LocalTime.of(12, 0),
             List.of(1L),
+            null,
+            null,
             new RecurrenceRequest(true, RecurrenceType.MONTHLY, 1, SeriesEndType.NEVER, null, null)
         ));
 
@@ -126,6 +152,133 @@ class ScheduleServiceTest {
     }
 
     @Test
+    void convertsOneTimeScheduleIntoRecurringSeries() {
+        ScheduleResponse created = scheduleService.create(new CreateScheduleRequest(
+            "전환 대상 일정",
+            LocalDate.of(2026, 4, 20),
+            LocalTime.of(10, 0),
+            LocalTime.of(12, 0),
+            List.of(1L, 3L),
+            null,
+            null,
+            null
+        ));
+
+        ScheduleResponse converted = scheduleService.convertToSeries(
+            created.id(),
+            new RecurrenceRequest(true, RecurrenceType.WEEKLY, 1, SeriesEndType.COUNT, null, 3)
+        );
+
+        assertThat(converted.seriesId()).isNotNull();
+        assertThat(converted.isRecurring()).isTrue();
+        assertThat(converted.date()).isEqualTo(LocalDate.of(2026, 4, 20));
+        assertThat(converted.recurrence()).isNotNull();
+        assertThat(converted.recurrence().anchorDate()).isEqualTo(LocalDate.of(2026, 4, 20));
+        assertThat(converted.participantIds()).containsExactly(1L, 3L);
+
+        assertThat(scheduleService.listMonth(2026, 4)).extracting(ScheduleResponse::date, ScheduleResponse::title)
+            .containsExactly(
+                org.assertj.core.groups.Tuple.tuple(LocalDate.of(2026, 4, 20), "전환 대상 일정"),
+                org.assertj.core.groups.Tuple.tuple(LocalDate.of(2026, 4, 27), "전환 대상 일정")
+            );
+
+        assertThat(scheduleService.listMonth(2026, 5)).extracting(ScheduleResponse::date)
+            .containsExactly(LocalDate.of(2026, 5, 4));
+    }
+
+    @Test
+    void expandsTeamSelectionIntoParticipantSnapshotAndKeepsSelectedTeams() {
+        Long teamId = teamRepository.findAll().stream()
+            .filter(team -> team.getName().equals("퍼포먼스팀"))
+            .map(Team::getId)
+            .findFirst()
+            .orElseThrow();
+        Long resourceId = resourceRepository.findAll().stream()
+            .filter(resource -> resource.getName().equals("메인 스튜디오"))
+            .map(resource -> resource.getId())
+            .findFirst()
+            .orElseThrow();
+
+        ScheduleResponse created = scheduleService.create(new CreateScheduleRequest(
+            "팀 촬영",
+            LocalDate.of(2026, 4, 18),
+            LocalTime.of(10, 0),
+            LocalTime.of(12, 0),
+            List.of(5L),
+            List.of(teamId),
+            resourceId,
+            null
+        ));
+
+        assertThat(created.teamIds()).containsExactly(teamId);
+        assertThat(created.resource()).isNotNull();
+        assertThat(created.resource().name()).isEqualTo("메인 스튜디오");
+        assertThat(created.participantIds()).containsExactly(1L, 2L, 3L, 5L);
+    }
+
+    @Test
+    void keepsRecurringTeamSnapshotStableWhenTeamMembershipChangesLater() {
+        Team performanceTeam = teamRepository.findAll().stream()
+            .filter(team -> team.getName().equals("퍼포먼스팀"))
+            .findFirst()
+            .orElseThrow();
+
+        scheduleService.create(new CreateScheduleRequest(
+            "무기한 팀 일정",
+            LocalDate.of(2026, 4, 10),
+            LocalTime.of(10, 0),
+            LocalTime.of(12, 0),
+            List.of(),
+            List.of(performanceTeam.getId()),
+            null,
+            new RecurrenceRequest(true, RecurrenceType.MONTHLY, 1, SeriesEndType.NEVER, null, null)
+        ));
+
+        performanceTeam.addMember(new TeamMember(
+            performanceTeam,
+            participantRepository.findById(5L).orElseThrow()
+        ));
+
+        ScheduleResponse augustOccurrence = scheduleService.listMonth(2026, 8).get(0);
+
+        assertThat(augustOccurrence.teamIds()).containsExactly(performanceTeam.getId());
+        assertThat(augustOccurrence.participantIds()).containsExactly(1L, 2L, 3L);
+    }
+
+    @Test
+    void rejectsResourceCollisionForOverlappingSchedules() {
+        Long resourceId = resourceRepository.findAll().stream()
+            .filter(resource -> resource.getName().equals("메인 스튜디오"))
+            .map(resource -> resource.getId())
+            .findFirst()
+            .orElseThrow();
+
+        scheduleService.create(new CreateScheduleRequest(
+            "리소스 선점",
+            LocalDate.of(2026, 4, 20),
+            LocalTime.of(10, 0),
+            LocalTime.of(12, 0),
+            List.of(1L),
+            null,
+            resourceId,
+            null
+        ));
+
+        assertThatThrownBy(() -> scheduleService.create(new CreateScheduleRequest(
+            "충돌 일정",
+            LocalDate.of(2026, 4, 20),
+            LocalTime.of(11, 0),
+            LocalTime.of(13, 0),
+            List.of(2L),
+            null,
+            resourceId,
+            null
+        )))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessageContaining("Resource collision");
+    }
+
+    @Test
     void updatesSingleRecurringOccurrenceAsException() {
         scheduleService.create(new CreateScheduleRequest(
             "주간 촬영",
@@ -133,6 +286,8 @@ class ScheduleServiceTest {
             LocalTime.of(10, 0),
             LocalTime.of(12, 0),
             List.of(1L),
+            null,
+            null,
             new RecurrenceRequest(true, RecurrenceType.WEEKLY, 1, SeriesEndType.COUNT, null, 3)
         ));
 
@@ -146,7 +301,9 @@ class ScheduleServiceTest {
             LocalDate.of(2026, 4, 28),
             LocalTime.of(11, 0),
             LocalTime.of(13, 0),
-            List.of(2L)
+            List.of(2L),
+            null,
+            null
         ));
 
         assertThat(updated.isException()).isTrue();
@@ -162,6 +319,8 @@ class ScheduleServiceTest {
             LocalTime.of(9, 0),
             LocalTime.of(10, 0),
             List.of(1L),
+            null,
+            null,
             new RecurrenceRequest(true, RecurrenceType.WEEKLY, 1, SeriesEndType.COUNT, null, 4)
         ));
 
@@ -184,6 +343,8 @@ class ScheduleServiceTest {
             LocalTime.of(10, 0),
             LocalTime.of(12, 0),
             List.of(1L),
+            null,
+            null,
             new RecurrenceRequest(true, RecurrenceType.WEEKLY, 1, SeriesEndType.COUNT, null, 4)
         ));
 
@@ -197,7 +358,9 @@ class ScheduleServiceTest {
             LocalDate.of(2026, 4, 27),
             LocalTime.of(11, 0),
             LocalTime.of(13, 0),
-            List.of(2L, 3L)
+            List.of(2L, 3L),
+            null,
+            null
         ));
 
         assertThat(updated.date()).isEqualTo(LocalDate.of(2026, 4, 27));
@@ -225,6 +388,8 @@ class ScheduleServiceTest {
             LocalTime.of(10, 0),
             LocalTime.of(12, 0),
             List.of(1L),
+            null,
+            null,
             new RecurrenceRequest(true, RecurrenceType.WEEKLY, 1, SeriesEndType.COUNT, null, 3)
         ));
 
@@ -235,7 +400,9 @@ class ScheduleServiceTest {
             target.date(),
             LocalTime.of(13, 0),
             LocalTime.of(15, 0),
-            List.of(2L, 4L)
+            List.of(2L, 4L),
+            null,
+            null
         ));
 
         assertThat(scheduleService.listMonth(2026, 4)).extracting(
@@ -260,6 +427,8 @@ class ScheduleServiceTest {
             LocalTime.of(10, 0),
             LocalTime.of(12, 0),
             List.of(1L),
+            null,
+            null,
             new RecurrenceRequest(true, RecurrenceType.WEEKLY, 1, SeriesEndType.COUNT, null, 4)
         ));
 

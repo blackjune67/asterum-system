@@ -12,6 +12,8 @@ public record CreateScheduleRequest(
     @NotNull LocalTime startTime,
     @NotNull LocalTime endTime,
     List<Long> participantIds,
+    List<Long> teamIds,
+    Long resourceId,
     RecurrenceRequest recurrence
 ) {
 }

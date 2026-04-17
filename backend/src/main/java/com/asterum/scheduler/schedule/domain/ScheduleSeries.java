@@ -1,5 +1,7 @@
 package com.asterum.scheduler.schedule.domain;
 
+import com.asterum.scheduler.resource.domain.Resource;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,10 +9,15 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "schedule_series")
@@ -28,6 +35,10 @@ public class ScheduleSeries {
 
     @Column(nullable = false)
     private LocalTime endTime;
+
+    @ManyToOne
+    @JoinColumn(name = "resource_id")
+    private Resource resource;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -56,6 +67,12 @@ public class ScheduleSeries {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ScheduleSeriesParticipant> participantLinks = new ArrayList<>();
+
+    @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ScheduleSeriesTeam> teamLinks = new ArrayList<>();
+
     protected ScheduleSeries() {
     }
 
@@ -63,6 +80,7 @@ public class ScheduleSeries {
         String title,
         LocalTime startTime,
         LocalTime endTime,
+        Resource resource,
         RecurrenceType recurrenceType,
         Integer intervalValue,
         SeriesEndType endType,
@@ -73,6 +91,7 @@ public class ScheduleSeries {
         this.title = title;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.resource = resource;
         this.recurrenceType = recurrenceType;
         this.intervalValue = intervalValue;
         this.endType = endType;
@@ -98,6 +117,10 @@ public class ScheduleSeries {
 
     public LocalTime getEndTime() {
         return endTime;
+    }
+
+    public Resource getResource() {
+        return resource;
     }
 
     public RecurrenceType getRecurrenceType() {
@@ -128,10 +151,19 @@ public class ScheduleSeries {
         return active;
     }
 
-    public void updateForAll(String title, LocalTime startTime, LocalTime endTime) {
+    public List<ScheduleSeriesParticipant> getParticipantLinks() {
+        return participantLinks;
+    }
+
+    public List<ScheduleSeriesTeam> getTeamLinks() {
+        return teamLinks;
+    }
+
+    public void updateForAll(String title, LocalTime startTime, LocalTime endTime, Resource resource) {
         this.title = title;
         this.startTime = startTime;
         this.endTime = endTime;
+        this.resource = resource;
         this.updatedAt = LocalDateTime.now();
     }
 

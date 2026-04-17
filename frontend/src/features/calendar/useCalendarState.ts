@@ -1,24 +1,45 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchParticipants } from '../../api/participants'
-import { createSchedule, deleteSchedule, fetchSchedule, fetchSchedules, updateSchedule } from '../../api/schedules'
+import { fetchResources } from '../../api/resources'
+import {
+  convertScheduleToSeries,
+  createSchedule,
+  deleteSchedule,
+  fetchSchedule,
+  fetchSchedules,
+  updateSchedule,
+} from '../../api/schedules'
+import { fetchTeams } from '../../api/teams'
 import type { Participant } from '../../types/participant'
-import type { ScheduleCreatePayload, ScheduleItem, ScheduleUpdatePayload, ScopeType } from '../../types/schedule'
+import type { ResourceItem } from '../../types/resource'
+import type {
+  ScheduleConvertPayload,
+  ScheduleCreatePayload,
+  ScheduleItem,
+  ScheduleUpdatePayload,
+  ScopeType,
+} from '../../types/schedule'
+import type { Team } from '../../types/team'
 import { toDateInputValue } from '../schedule/dateUtils'
 
 export function useCalendarState() {
   const monthRequestIdRef = useRef(0)
   const detailRequestIdRef = useRef(0)
+  const lookupRequestIdRef = useRef(0)
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
   })
   const [items, setItems] = useState<ScheduleItem[]>([])
   const [participants, setParticipants] = useState<Participant[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
+  const [resources, setResources] = useState<ResourceItem[]>([])
   const [selectedDate, setSelectedDate] = useState(toDateInputValue(new Date()))
   const [selectedItem, setSelectedItem] = useState<ScheduleItem | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
+  const [convertOpen, setConvertOpen] = useState(false)
   const [scopeOpen, setScopeOpen] = useState(false)
   const [scopeMode, setScopeMode] = useState<'edit' | 'delete'>('edit')
   const [pendingUpdate, setPendingUpdate] = useState<ScheduleUpdatePayload | null>(null)
@@ -26,6 +47,8 @@ export function useCalendarState() {
   const [error, setError] = useState<string | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [convertError, setConvertError] = useState<string | null>(null)
   const currentYear = currentMonth.getFullYear()
   const currentMonthNumber = currentMonth.getMonth() + 1
 
@@ -34,13 +57,9 @@ export function useCalendarState() {
     setLoading(true)
     setError(null)
     try {
-      const [nextItems, nextParticipants] = await Promise.all([
-        fetchSchedules(year, month),
-        fetchParticipants(),
-      ])
+      const nextItems = await fetchSchedules(year, month)
       if (requestId !== monthRequestIdRef.current) return
       setItems(nextItems)
-      setParticipants(nextParticipants)
     } catch (cause) {
       if (requestId !== monthRequestIdRef.current) return
       setError(cause instanceof Error ? cause.message : 'Failed to load calendar data')
@@ -54,7 +73,28 @@ export function useCalendarState() {
     void loadMonth(currentYear, currentMonthNumber)
   }, [currentYear, currentMonthNumber])
 
+  useEffect(() => {
+    const requestId = ++lookupRequestIdRef.current
+    void (async () => {
+      try {
+        const [nextParticipants, nextTeams, nextResources] = await Promise.all([
+          fetchParticipants(),
+          fetchTeams(),
+          fetchResources(),
+        ])
+        if (requestId !== lookupRequestIdRef.current) return
+        setParticipants(nextParticipants)
+        setTeams(nextTeams)
+        setResources(nextResources)
+      } catch (cause) {
+        if (requestId !== lookupRequestIdRef.current) return
+        setError(cause instanceof Error ? cause.message : 'Failed to load calendar lookups')
+      }
+    })()
+  }, [])
+
   function openCreate(date: string) {
+    setFormError(null)
     setSelectedDate(date)
     setFormMode('create')
     setFormOpen(true)
@@ -81,9 +121,14 @@ export function useCalendarState() {
   }
 
   async function submitCreate(payload: ScheduleCreatePayload | ScheduleUpdatePayload) {
-    await createSchedule(payload as ScheduleCreatePayload)
-    setFormOpen(false)
-    await loadMonth(currentYear, currentMonthNumber)
+    try {
+      await createSchedule(payload as ScheduleCreatePayload)
+      setFormError(null)
+      setFormOpen(false)
+      await loadMonth(currentYear, currentMonthNumber)
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : '일정을 저장하지 못했습니다.')
+    }
   }
 
   async function submitEdit(payload: ScheduleCreatePayload | ScheduleUpdatePayload) {
@@ -96,10 +141,15 @@ export function useCalendarState() {
       setFormOpen(false)
       return
     }
-    await updateSchedule(selectedItem.id, 'THIS', updatePayload)
-    setFormOpen(false)
-    setDetailOpen(false)
-    await loadMonth(currentYear, currentMonthNumber)
+    try {
+      await updateSchedule(selectedItem.id, 'THIS', updatePayload)
+      setFormError(null)
+      setFormOpen(false)
+      setDetailOpen(false)
+      await loadMonth(currentYear, currentMonthNumber)
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : '일정을 수정하지 못했습니다.')
+    }
   }
 
   async function handleDelete(scope: ScopeType) {
@@ -130,21 +180,40 @@ export function useCalendarState() {
     await loadMonth(currentYear, currentMonthNumber)
   }
 
+  async function submitConvert(payload: ScheduleConvertPayload) {
+    if (!selectedItem) return
+    try {
+      const converted = await convertScheduleToSeries(selectedItem.id, payload)
+      setConvertError(null)
+      setConvertOpen(false)
+      setSelectedItem(converted)
+      setDetailOpen(true)
+      await loadMonth(currentYear, currentMonthNumber)
+    } catch (cause) {
+      setConvertError(cause instanceof Error ? cause.message : '반복 일정으로 전환하지 못했습니다.')
+    }
+  }
+
   return {
     currentMonth,
     items,
     participants,
+    teams,
+    resources,
     selectedDate,
     selectedItem,
     detailOpen,
     formOpen,
     formMode,
+    convertOpen,
     scopeOpen,
     scopeMode,
     loading,
     error,
     detailLoading,
     detailError,
+    formError,
+    convertError,
     setCurrentMonth,
     openCreate,
     openDetail,
@@ -152,7 +221,9 @@ export function useCalendarState() {
     submitEdit,
     handleDelete,
     applyScope,
+    submitConvert,
     closeForm() {
+      setFormError(null)
       setFormOpen(false)
     },
     closeDetail() {
@@ -161,6 +232,16 @@ export function useCalendarState() {
       setDetailError(null)
       setDetailOpen(false)
       setSelectedItem(null)
+    },
+    openConvert() {
+      if (!selectedItem || selectedItem.isRecurring) return
+      setConvertError(null)
+      setDetailOpen(false)
+      setConvertOpen(true)
+    },
+    closeConvert() {
+      setConvertError(null)
+      setConvertOpen(false)
     },
     goToPreviousMonth() {
       setCurrentMonth((value) => new Date(value.getFullYear(), value.getMonth() - 1, 1))
