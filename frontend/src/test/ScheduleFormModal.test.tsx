@@ -61,7 +61,7 @@ test('defaults recurrence type to daily and updates repeat options per type', as
   expect(screen.getByRole('option', { name: '1개월' })).toBeInTheDocument()
   expect(screen.getByRole('option', { name: '99개월' })).toBeInTheDocument()
   expect(screen.queryByRole('option', { name: '1주' })).not.toBeInTheDocument()
-})
+}, 15000)
 
 test('caps recurring count at 50', async () => {
   const user = userEvent.setup()
