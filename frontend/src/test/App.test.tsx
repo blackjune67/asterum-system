@@ -9,10 +9,6 @@ const fetchMock = vi.fn()
 
 vi.stubGlobal('fetch', fetchMock)
 
-vi.mock('agentation', () => ({
-  Agentation: () => null,
-}))
-
 function createJsonResponse(data: unknown, ok = true, status = 200) {
   return {
     ok,

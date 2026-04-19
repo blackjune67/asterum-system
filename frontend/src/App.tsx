@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Agentation } from 'agentation'
+import { HeroBlossomLayer } from './components/motion/HeroBlossomLayer'
 import { CalendarPage } from './features/calendar/CalendarPage'
 
 const rollingImages = [
@@ -77,6 +77,7 @@ export default function App() {
       />
       <main className="relative mx-auto flex min-h-screen max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <header className="dream-panel px-6 py-6 sm:px-8 sm:py-8">
+          <HeroBlossomLayer />
           <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div>
               <div className="dream-badge text-accent">
@@ -104,7 +105,6 @@ export default function App() {
 
         <CalendarPage />
       </main>
-      <Agentation />
     </div>
   )
 }

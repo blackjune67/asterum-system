@@ -66,6 +66,33 @@ img {
 }
 
 @layer components {
+  .blossom-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .blossom-layer__petal {
+    position: absolute;
+    top: -10%;
+    width: 1.15rem;
+    height: 1.65rem;
+    border-radius: 75% 0 75% 0;
+    opacity: var(--blossom-opacity, 0.4);
+    background:
+      radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.88), transparent 34%),
+      linear-gradient(180deg, rgba(255, 233, 242, 0.92), rgba(242, 176, 214, 0.72));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      0 10px 18px rgba(198, 117, 180, 0.12);
+    transform: translate3d(0, 0, 0) rotate(-18deg) scale(var(--blossom-scale, 0.8));
+    transform-origin: center;
+    animation: blossom-fall linear infinite;
+    will-change: transform, opacity;
+  }
+
   .dream-panel {
     @apply relative overflow-hidden rounded-[2rem] border border-white/60 bg-white/55 backdrop-blur-xl;
     box-shadow: var(--panel-shadow);
@@ -139,6 +166,31 @@ img {
   .dream-modal {
     @apply dream-panel w-full p-6 sm:p-7;
     background: rgba(255, 249, 253, 0.82);
+  }
+}
+
+@keyframes blossom-fall {
+  0% {
+    top: -10%;
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(-20deg) scale(var(--blossom-scale, 0.8));
+  }
+
+  15% {
+    opacity: var(--blossom-opacity, 0.4);
+  }
+
+  55% {
+    opacity: calc(var(--blossom-opacity, 0.4) * 0.88);
+    transform: translate3d(calc(var(--blossom-drift, 22px) * 0.55), 0, 0) rotate(-2deg)
+      scale(var(--blossom-scale, 0.8));
+  }
+
+  100% {
+    top: 110%;
+    opacity: 0;
+    transform: translate3d(var(--blossom-drift, 22px), 0, 0) rotate(18deg)
+      scale(var(--blossom-scale, 0.8));
   }
 }
 
