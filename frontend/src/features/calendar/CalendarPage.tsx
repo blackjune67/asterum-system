@@ -8,10 +8,13 @@ import { ScheduleFormModal } from '../schedule/ScheduleFormModal'
 import { ScopePickerModal } from '../schedule/ScopePickerModal'
 import { ScheduleConvertModal } from '../schedule/ScheduleConvertModal'
 import { StaffTeamManagementModal } from '../participant/StaffTeamManagementModal'
+import { WeekTimelineGrid } from './WeekTimelineGrid'
+import { addDays, getWeekLabel } from './weekTimeline'
 
 export function CalendarPage() {
   const {
     items,
+    weekItems,
     participants,
     teams,
     resources,
@@ -34,6 +37,7 @@ export function CalendarPage() {
   const [managementOpen, setManagementOpen] = useState(false)
   const currentMonth = useCalendarUiStore((state) => state.currentMonth)
   const selectedDate = useCalendarUiStore((state) => state.selectedDate)
+  const calendarView = useCalendarUiStore((state) => state.calendarView)
   const detailOpen = useCalendarUiStore((state) => state.detailOpen)
   const formOpen = useCalendarUiStore((state) => state.formOpen)
   const formMode = useCalendarUiStore((state) => state.formMode)
@@ -44,6 +48,8 @@ export function CalendarPage() {
   const formError = useCalendarUiStore((state) => state.formError)
   const convertError = useCalendarUiStore((state) => state.convertError)
   const setCurrentMonth = useCalendarUiStore((state) => state.setCurrentMonth)
+  const setSelectedDate = useCalendarUiStore((state) => state.setSelectedDate)
+  const setCalendarView = useCalendarUiStore((state) => state.setCalendarView)
   const openCreate = useCalendarUiStore((state) => state.openCreate)
   const openDetail = useCalendarUiStore((state) => state.openDetail)
   const closeForm = useCalendarUiStore((state) => state.closeForm)
@@ -75,6 +81,32 @@ export function CalendarPage() {
     { label: '반복 일정', value: recurringCount, description: '반복 일정' },
     { label: '단일 일정', value: singleCount, description: '단일 일정' },
   ]
+  const isWeekView = calendarView === 'week'
+  const heading = isWeekView ? getWeekLabel(selectedDate) : monthLabel(currentMonth)
+
+  function movePeriod(direction: -1 | 1) {
+    if (isWeekView) {
+      const [year, month, day] = selectedDate.split('-').map(Number)
+      const nextDate = addDays(new Date(year, month - 1, day), direction * 7)
+      startTransition(() => {
+        setSelectedDate(`${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`)
+      })
+      return
+    }
+
+    startTransition(() => {
+      setCurrentMonth((value) => new Date(value.getFullYear(), value.getMonth() + direction, 1))
+    })
+  }
+
+  function openCreateForCurrentView() {
+    if (isWeekView) {
+      openCreate(selectedDate)
+      return
+    }
+
+    openCreate(`${currentYear}-${String(currentMonthNumber).padStart(2, '0')}-01`)
+  }
 
   useEffect(() => {
     if (!modalOpen) return
@@ -100,49 +132,70 @@ export function CalendarPage() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.34em] text-accent">Board</p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <h2 className="text-3xl font-bold text-ink sm:text-4xl">{monthLabel(currentMonth)}</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {summaryStats.map((stat) => (
-                      <div
-                        key={stat.label}
-                        className="flex items-center gap-1 rounded-full border border-white/70 bg-white/65 px-3 py-1 text-xs font-medium text-plum shadow-[0_8px_20px_rgba(219,185,255,0.18)]"
-                      >
-                        <span>{stat.label}</span>
-                        <span className="font-semibold text-ink">{stat.value}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <h2 className="text-3xl font-bold text-ink sm:text-4xl">{heading}</h2>
+                  {!isWeekView && (
+                    <div className="flex flex-wrap gap-2">
+                      {summaryStats.map((stat) => (
+                        <div
+                          key={stat.label}
+                          className="flex items-center gap-1 rounded-full border border-white/70 bg-white/65 px-3 py-1 text-xs font-medium text-plum shadow-[0_8px_20px_rgba(219,185,255,0.18)]"
+                        >
+                          <span>{stat.label}</span>
+                          <span className="font-semibold text-ink">{stat.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2 xl:justify-end">
+              <div className="inline-flex rounded-full border border-white/70 bg-white/72 p-1 shadow-[0_12px_24px_rgba(191,117,164,0.12)]">
+                <button
+                  aria-pressed={!isWeekView}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${!isWeekView ? 'bg-white text-ink shadow-sm' : 'text-plum'}`}
+                  onClick={() => {
+                    startTransition(() => {
+                      setCalendarView('month')
+                    })
+                  }}
+                  type="button"
+                >
+                  월간
+                </button>
+                <button
+                  aria-pressed={isWeekView}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${isWeekView ? 'bg-white text-ink shadow-sm' : 'text-plum'}`}
+                  onClick={() => {
+                    startTransition(() => {
+                      setSelectedDate(selectedDate)
+                      setCalendarView('week')
+                    })
+                  }}
+                  type="button"
+                >
+                  주간
+                </button>
+              </div>
               <button className="dream-button-secondary" onClick={() => setManagementOpen(true)}>
                 참가자/팀 관리
               </button>
               <button
                 className="dream-button-secondary"
-                onClick={() => {
-                  startTransition(() => {
-                    setCurrentMonth((value) => new Date(value.getFullYear(), value.getMonth() - 1, 1))
-                  })
-                }}
+                onClick={() => movePeriod(-1)}
               >
-                이전 달
+                {isWeekView ? '이전 주' : '이전 달'}
               </button>
               <button
                 className="dream-button-secondary"
-                onClick={() => {
-                  startTransition(() => {
-                    setCurrentMonth((value) => new Date(value.getFullYear(), value.getMonth() + 1, 1))
-                  })
-                }}
+                onClick={() => movePeriod(1)}
               >
-                다음 달
+                {isWeekView ? '다음 주' : '다음 달'}
               </button>
               <button
                 className="dream-button-primary"
-                onClick={() => openCreate(`${currentYear}-${String(currentMonthNumber).padStart(2, '0')}-01`)}
+                onClick={openCreateForCurrentView}
               >
                 일정 등록
               </button>
@@ -166,12 +219,21 @@ export function CalendarPage() {
             <p className="mt-8 text-sm text-plum">일정을 불러오는 중...</p>
           ) : (
             <div className="mt-6">
-              <MonthGrid
-                month={currentMonth}
-                itemsByDate={itemsByDate}
-                onSelectDate={openCreate}
-                onSelectItem={(item) => openDetail(item.id)}
-              />
+              {isWeekView ? (
+                <WeekTimelineGrid
+                  anchorDate={selectedDate}
+                  items={weekItems}
+                  onSelectDate={openCreate}
+                  onSelectItem={(item) => openDetail(item.id)}
+                />
+              ) : (
+                <MonthGrid
+                  month={currentMonth}
+                  itemsByDate={itemsByDate}
+                  onSelectDate={openCreate}
+                  onSelectItem={(item) => openDetail(item.id)}
+                />
+              )}
             </div>
           )}
         </div>

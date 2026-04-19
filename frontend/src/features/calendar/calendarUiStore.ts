@@ -5,10 +5,12 @@ import { toDateInputValue } from '../schedule/dateUtils'
 
 export type CalendarFormMode = 'create' | 'edit'
 export type CalendarScopeMode = 'edit' | 'delete'
+export type CalendarView = 'month' | 'week'
 
 export interface CalendarUiState {
   currentMonth: Date
   selectedDate: string
+  calendarView: CalendarView
   selectedItemId: number | null
   detailRequested: boolean
   detailOpen: boolean
@@ -25,6 +27,8 @@ export interface CalendarUiState {
 
 interface CalendarUiActions {
   setCurrentMonth: (next: Date | ((current: Date) => Date)) => void
+  setSelectedDate: (date: string) => void
+  setCalendarView: (view: CalendarView) => void
   setFormError: (message: string | null) => void
   setDetailError: (message: string | null) => void
   setConvertError: (message: string | null) => void
@@ -49,6 +53,7 @@ function createInitialCalendarUiState(): CalendarUiState {
   return {
     currentMonth: new Date(now.getFullYear(), now.getMonth(), 1),
     selectedDate: toDateInputValue(now),
+    calendarView: 'month',
     selectedItemId: null,
     detailRequested: false,
     detailOpen: false,
@@ -73,6 +78,16 @@ export function createCalendarUiStore(initialState: Partial<CalendarUiState> = {
         currentMonth: typeof next === 'function' ? next(state.currentMonth) : next,
       }))
     },
+    setSelectedDate(date) {
+      const [year, month] = date.split('-').map(Number)
+      set({
+        selectedDate: date,
+        currentMonth: new Date(year, month - 1, 1),
+      })
+    },
+    setCalendarView(view) {
+      set({ calendarView: view })
+    },
     setFormError(message) {
       set({ formError: message })
     },
@@ -83,7 +98,9 @@ export function createCalendarUiStore(initialState: Partial<CalendarUiState> = {
       set({ convertError: message })
     },
     openCreate(date) {
+      const [year, month] = date.split('-').map(Number)
       set({
+        currentMonth: new Date(year, month - 1, 1),
         selectedDate: date,
         formMode: 'create',
         formOpen: true,

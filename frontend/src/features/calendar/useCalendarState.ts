@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo } from 'react'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createParticipant, deleteParticipant, fetchParticipants, updateParticipant } from '../../api/participants'
 import { fetchResources } from '../../api/resources'
 import {
@@ -22,6 +22,7 @@ import type {
 import type { Team, TeamMutationPayload } from '../../types/team'
 import { calendarUiStore, useCalendarUiStore } from './calendarUiStore'
 import { calendarQueryKeys } from './queryKeys'
+import { getWeekMonthKeys } from './weekTimeline'
 
 function toErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
@@ -30,6 +31,8 @@ function toErrorMessage(error: unknown, fallback: string) {
 export function useCalendarState() {
   const queryClient = useQueryClient()
   const currentMonth = useCalendarUiStore((state) => state.currentMonth)
+  const selectedDate = useCalendarUiStore((state) => state.selectedDate)
+  const calendarView = useCalendarUiStore((state) => state.calendarView)
   const selectedItemId = useCalendarUiStore((state) => state.selectedItemId)
   const detailRequested = useCalendarUiStore((state) => state.detailRequested)
   const detailOpen = useCalendarUiStore((state) => state.detailOpen)
@@ -48,6 +51,20 @@ export function useCalendarState() {
   const monthQuery = useQuery({
     queryKey: calendarQueryKeys.month(currentYear, currentMonthNumber),
     queryFn: () => fetchSchedules(currentYear, currentMonthNumber),
+  })
+  const weekMonthKeys = useMemo(
+    () =>
+      getWeekMonthKeys(selectedDate).filter(
+        ({ year, month }) => year !== currentYear || month !== currentMonthNumber,
+      ),
+    [currentMonthNumber, currentYear, selectedDate],
+  )
+  const weekMonthQueries = useQueries({
+    queries: weekMonthKeys.map(({ year, month }) => ({
+      queryKey: calendarQueryKeys.month(year, month),
+      queryFn: () => fetchSchedules(year, month),
+      enabled: calendarView === 'week',
+    })),
   })
   const participantsQuery = useQuery({
     queryKey: calendarQueryKeys.participants(),
@@ -119,17 +136,35 @@ export function useCalendarState() {
   })
 
   const items = monthQuery.data ?? []
+  const weekItems = useMemo(() => {
+    const merged = new Map<string, (typeof items)[number]>()
+    const appendItems = (source: typeof items) => {
+      for (const item of source) {
+        merged.set(`${item.id}-${item.date}-${item.startTime}-${item.endTime}`, item)
+      }
+    }
+
+    appendItems(items)
+    for (const query of weekMonthQueries) {
+      appendItems(query.data ?? [])
+    }
+
+    return [...merged.values()]
+  }, [items, weekMonthQueries])
   const participants: Participant[] = participantsQuery.data ?? []
   const teams: Team[] = teamsQuery.data ?? []
   const resources: ResourceItem[] = resourcesQuery.data ?? []
   const selectedItem = detailQuery.data ?? null
   const lookupError = participantsQuery.error ?? teamsQuery.error ?? resourcesQuery.error
+  const weekError = weekMonthQueries.find((query) => query.error)?.error ?? null
   const error = monthQuery.error
     ? toErrorMessage(monthQuery.error, 'Failed to load calendar data')
+    : weekError
+      ? toErrorMessage(weekError, 'Failed to load calendar data')
     : lookupError
       ? toErrorMessage(lookupError, 'Failed to load calendar lookups')
       : null
-  const loading = monthQuery.isPending
+  const loading = calendarView === 'week' ? monthQuery.isPending || weekMonthQueries.some((query) => query.isPending) : monthQuery.isPending
   const detailLoading = selectedItemId !== null && detailQuery.isPending
 
   async function invalidateMonthQueries() {
@@ -334,6 +369,7 @@ export function useCalendarState() {
 
   return {
     items,
+    weekItems,
     participants,
     teams,
     resources,
