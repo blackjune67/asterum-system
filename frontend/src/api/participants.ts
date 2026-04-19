@@ -1,6 +1,6 @@
-import { apiGetCached } from './client'
+import { apiGet } from './client'
 import type { Participant } from '../types/participant'
 
 export function fetchParticipants() {
-  return apiGetCached<Participant[]>('/participants')
+  return apiGet<Participant[]>('/participants')
 }

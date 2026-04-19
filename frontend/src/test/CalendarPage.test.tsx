@@ -1,7 +1,7 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { resetApiGetCacheForTests } from '../api/client'
 import { CalendarPage } from '../features/calendar/CalendarPage'
+import { renderWithQueryClient } from './queryClient'
 
 const fetchMock = vi.fn()
 
@@ -70,7 +70,6 @@ function mockInitialLookups() {
 describe('CalendarPage', () => {
   beforeEach(() => {
     fetchMock.mockReset()
-    resetApiGetCacheForTests()
   })
 
   afterEach(() => {
@@ -81,30 +80,30 @@ describe('CalendarPage', () => {
     fetchMock.mockResolvedValueOnce(createJsonResponse([]))
     mockInitialLookups()
 
-    render(<CalendarPage />)
+    renderWithQueryClient(<CalendarPage />)
 
     expect(screen.getByRole('button', { name: '일정 등록' })).toBeInTheDocument()
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
   })
 
   test('keeps the latest month data when an earlier request resolves late', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-04-15T09:00:00'))
-    const aprilSchedules = createDeferredResponse()
+    const today = new Date()
+    const nextMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, 2)
+    const deferredCurrentMonthSchedules = createDeferredResponse()
 
-    fetchMock.mockImplementationOnce(() => aprilSchedules.promise)
+    fetchMock.mockImplementationOnce(() => deferredCurrentMonthSchedules.promise)
     mockInitialLookups()
     fetchMock.mockResolvedValueOnce(
       createJsonResponse([
         createScheduleItem({
           id: 2,
-          title: 'May shoot',
-          date: '2026-05-02',
+          title: 'Next month shoot',
+          date: `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-02`,
         }),
       ]),
     )
 
-    render(<CalendarPage />)
+    renderWithQueryClient(<CalendarPage />)
 
     await act(async () => {
       screen.getByRole('button', { name: '다음 달' }).click()
@@ -112,14 +111,14 @@ describe('CalendarPage', () => {
       await Promise.resolve()
     })
 
-    expect(screen.getByText('May shoot')).toBeInTheDocument()
+    expect(await screen.findByText('Next month shoot')).toBeInTheDocument()
 
     await act(async () => {
-      aprilSchedules.resolve(
+      deferredCurrentMonthSchedules.resolve(
         createJsonResponse([
           createScheduleItem({
             id: 9,
-            title: 'April shoot',
+            title: 'Current month shoot',
           }),
         ]),
       )
@@ -127,8 +126,8 @@ describe('CalendarPage', () => {
       await Promise.resolve()
     })
 
-    expect(screen.getByText('May shoot')).toBeInTheDocument()
-    expect(screen.queryByText('April shoot')).not.toBeInTheDocument()
+    expect(screen.getByText('Next month shoot')).toBeInTheDocument()
+    expect(screen.queryByText('Current month shoot')).not.toBeInTheDocument()
   })
 
   test('shows a detail error when loading the selected item fails', async () => {
@@ -138,7 +137,7 @@ describe('CalendarPage', () => {
     mockInitialLookups()
     fetchMock.mockResolvedValueOnce(createJsonResponse({}, false, 500))
 
-    render(<CalendarPage />)
+    renderWithQueryClient(<CalendarPage />)
 
     await user.click(await screen.findByRole('button', { name: /Shoot/ }))
 
@@ -152,7 +151,7 @@ describe('CalendarPage', () => {
     fetchMock.mockResolvedValueOnce(createJsonResponse([]))
     mockInitialLookups()
 
-    render(<CalendarPage />)
+    renderWithQueryClient(<CalendarPage />)
 
     await user.click(await screen.findByRole('button', { name: 'Open day 2026-04-15' }))
 
@@ -184,7 +183,7 @@ describe('CalendarPage', () => {
     mockInitialLookups()
     fetchMock.mockResolvedValueOnce(createJsonResponse(recurringItem))
 
-    render(<CalendarPage />)
+    renderWithQueryClient(<CalendarPage />)
 
     await user.click(await screen.findByRole('button', { name: /Recurring shoot/ }))
     await user.click(await screen.findByRole('button', { name: '삭제' }))
@@ -232,7 +231,7 @@ describe('CalendarPage', () => {
     fetchMock.mockResolvedValueOnce(createJsonResponse(convertedItem))
     fetchMock.mockResolvedValueOnce(createJsonResponse([convertedItem]))
 
-    render(<CalendarPage />)
+    renderWithQueryClient(<CalendarPage />)
 
     await user.click(await screen.findByRole('button', { name: /One-time shoot/ }))
     await user.click(await screen.findByRole('button', { name: '반복 일정으로 전환' }))
