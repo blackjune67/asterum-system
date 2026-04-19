@@ -1,9 +1,9 @@
-package com.asterum.scheduler.participant;
+package com.asterum.scheduler.team;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-class ParticipantControllerTest {
+class TeamControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -50,84 +50,85 @@ class ParticipantControllerTest {
     }
 
     @Test
-    void returnsSeededParticipantsWithTeamMetadata() throws Exception {
-        mockMvc.perform(get("/api/participants"))
+    void returnsSeededTeamsWithStaffMembers() throws Exception {
+        mockMvc.perform(get("/api/teams"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$", hasSize(9)))
-            .andExpect(jsonPath("$[?(@.name=='예준')].type").value(hasItem("MEMBER")))
-            .andExpect(jsonPath("$[?(@.name=='카메라맨A')].type").value(hasItem("STAFF")))
-            .andExpect(jsonPath("$[?(@.name=='카메라맨A')].teamId").value(hasItem(visualTeamId.intValue())))
-            .andExpect(jsonPath("$[?(@.name=='카메라맨A')].teamName").value(hasItem("영상팀")));
+            .andExpect(jsonPath("$", hasSize(3)))
+            .andExpect(jsonPath("$[?(@.name=='영상팀')].members[0][?(@.name=='카메라맨A')]").exists())
+            .andExpect(jsonPath("$[?(@.name=='영상팀')].memberIds[0]").value(hasItem(cameraManId.intValue())));
     }
 
     @Test
-    void createsAndUpdatesStaffParticipant() throws Exception {
-        String createdBody = mockMvc.perform(post("/api/participants")
+    void createsUpdatesAndDeletesEmptyTeam() throws Exception {
+        String createdBody = mockMvc.perform(post("/api/teams")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "name": "조명기사E",
-                      "type": "STAFF",
-                      "teamId": %d
+                      "name": "조명팀"
                     }
-                    """.formatted(visualTeamId)))
+                    """))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.name").value("조명기사E"))
-            .andExpect(jsonPath("$.type").value("STAFF"))
-            .andExpect(jsonPath("$.teamId").value(visualTeamId))
-            .andExpect(jsonPath("$.teamName").value("영상팀"))
+            .andExpect(jsonPath("$.name").value("조명팀"))
+            .andExpect(jsonPath("$.memberIds", hasSize(0)))
             .andReturn()
             .getResponse()
             .getContentAsString();
 
-        String participantId = com.jayway.jsonpath.JsonPath.read(createdBody, "$.id").toString();
+        String teamId = com.jayway.jsonpath.JsonPath.read(createdBody, "$.id").toString();
 
-        mockMvc.perform(put("/api/participants/{id}", participantId)
+        mockMvc.perform(put("/api/teams/{id}", teamId)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "name": "조명감독E",
-                      "type": "STAFF",
-                      "teamId": %d
+                      "name": "조명운영팀"
                     }
-                    """.formatted(visualTeamId)))
+                    """))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.name").value("조명감독E"))
-            .andExpect(jsonPath("$.teamName").value("영상팀"));
+            .andExpect(jsonPath("$.name").value("조명운영팀"));
+
+        mockMvc.perform(delete("/api/teams/{id}", teamId))
+            .andExpect(status().isNoContent());
     }
 
     @Test
-    void rejectsNonStaffParticipantMutation() throws Exception {
-        mockMvc.perform(post("/api/participants")
+    void rejectsDeletingTeamWithMembers() throws Exception {
+        mockMvc.perform(delete("/api/teams/{id}", visualTeamId))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("TEAM_HAS_MEMBERS"));
+    }
+
+    @Test
+    void rejectsDeletingTeamReferencedBySchedule() throws Exception {
+        String createdBody = mockMvc.perform(post("/api/teams")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "name": "가짜아티스트",
-                      "type": "MEMBER",
-                      "teamId": %d
+                      "name": "무멤버임시팀"
                     }
-                    """.formatted(visualTeamId)))
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.code").value("STAFF_TYPE_REQUIRED"));
-    }
+                    """))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
 
-    @Test
-    void rejectsDeletingParticipantReferencedBySchedule() throws Exception {
+        String teamId = com.jayway.jsonpath.JsonPath.read(createdBody, "$.id").toString();
+
         mockMvc.perform(post("/api/schedules")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "title": "참조 중인 스태프 일정",
+                      "title": "빈 팀 참조 일정",
                       "date": "2026-04-20",
                       "startTime": "10:00:00",
                       "endTime": "12:00:00",
-                      "participantIds": [%d]
+                      "participantIds": [],
+                      "teamIds": [%s]
                     }
-                    """.formatted(cameraManId)))
+                    """.formatted(teamId)))
             .andExpect(status().isCreated());
 
-        mockMvc.perform(delete("/api/participants/{id}", cameraManId))
+        mockMvc.perform(delete("/api/teams/{id}", teamId))
             .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.code").value("PARTICIPANT_IN_USE"));
+            .andExpect(jsonPath("$.code").value("TEAM_IN_USE"));
     }
 }

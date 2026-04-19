@@ -42,9 +42,9 @@ describe('App', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
 
-    expect(screen.getByText('PLAYBOOK EDITION')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '우리만의 드리미 스케줄 아카이브' })).toBeInTheDocument()
+    expect(screen.getByText('PLAVE와 함께 테라의 팬들과 소통을 원활하게!')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '아스테룸 통합 스케줄러' })).toBeInTheDocument()
     expect(screen.getByRole('img', { name: '플레이브 감성 레퍼런스 무드보드' })).toBeInTheDocument()
-    expect(screen.getAllByText('Soft Album Dream')).toHaveLength(2)
+    expect(screen.getByText('Soft Album Dream')).toBeInTheDocument()
   })
 })

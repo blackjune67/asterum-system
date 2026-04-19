@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CalendarPage } from '../features/calendar/CalendarPage'
 import { renderWithQueryClient } from './queryClient'
@@ -43,8 +43,13 @@ function createScheduleItem(overrides: Partial<Record<string, unknown>> = {}) {
   }
 }
 
-function createParticipant(id: number, name: string, type: 'MEMBER' | 'STAFF') {
-  return { id, name, type }
+function createParticipant(
+  id: number,
+  name: string,
+  type: 'MEMBER' | 'STAFF',
+  team: { id: number; name: string } | null = null,
+) {
+  return { id, name, type, teamId: team?.id ?? null, teamName: team?.name ?? null }
 }
 
 function createTeam(id: number, name: string, members = [createParticipant(1, '하민', 'MEMBER')]) {
@@ -265,5 +270,52 @@ describe('CalendarPage', () => {
     expect(screen.getByText('비주얼팀')).toBeInTheDocument()
     expect(screen.getByText('1명 참여')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '반복 일정 전환' })).not.toBeInTheDocument()
+  })
+
+  test('refreshes participants after staff creation so the schedule form shows the new staff member', async () => {
+    const user = userEvent.setup()
+
+    fetchMock.mockResolvedValueOnce(createJsonResponse([]))
+    fetchMock.mockResolvedValueOnce(createJsonResponse([createParticipant(1, '예준', 'MEMBER')]))
+    fetchMock.mockResolvedValueOnce(createJsonResponse([createTeam(7, '영상팀', [])]))
+    fetchMock.mockResolvedValueOnce(createJsonResponse([createResource(3, '회의실 A', 'ROOM')]))
+    fetchMock.mockResolvedValueOnce(
+      createJsonResponse(createParticipant(6, '카메라맨A', 'STAFF', { id: 7, name: '영상팀' }), true, 201),
+    )
+    fetchMock.mockResolvedValueOnce(
+      createJsonResponse([
+        createParticipant(1, '예준', 'MEMBER'),
+        createParticipant(6, '카메라맨A', 'STAFF', { id: 7, name: '영상팀' }),
+      ]),
+    )
+    fetchMock.mockResolvedValueOnce(createJsonResponse([createTeam(7, '영상팀', [])]))
+
+    renderWithQueryClient(<CalendarPage />)
+
+    await user.click(await screen.findByRole('button', { name: '참가자/팀 관리' }))
+    await user.type(screen.getByLabelText('개인 스태프 이름'), '카메라맨A')
+    await user.selectOptions(screen.getByLabelText('소속 팀'), '7')
+    await user.click(screen.getByRole('button', { name: '개인 스태프 등록' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/participants',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            name: '카메라맨A',
+            type: 'STAFF',
+            teamId: 7,
+          }),
+        }),
+      )
+    })
+
+    await user.click(screen.getByRole('button', { name: '닫기' }))
+    await user.click(screen.getByRole('button', { name: '일정 등록' }))
+
+    const staffSection = screen.getByRole('group', { name: '스태프' })
+    expect(await within(staffSection).findByLabelText('카메라맨A')).toBeInTheDocument()
+    expect(within(staffSection).getByText('영상팀')).toBeInTheDocument()
   })
 })

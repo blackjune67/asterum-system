@@ -30,25 +30,23 @@ public class SeedDataInitializer {
                     new Participant("은호", ParticipantType.MEMBER),
                     new Participant("밤비", ParticipantType.MEMBER),
                     new Participant("하민", ParticipantType.MEMBER),
-                    new Participant("기술팀", ParticipantType.STAFF),
-                    new Participant("디자인팀", ParticipantType.STAFF),
-                    new Participant("촬영팀", ParticipantType.STAFF)
+                    new Participant("카메라맨A", ParticipantType.STAFF),
+                    new Participant("편집자B", ParticipantType.STAFF),
+                    new Participant("디자이너C", ParticipantType.STAFF),
+                    new Participant("음향기사D", ParticipantType.STAFF)
                 ));
 
-                Team performanceTeam = new Team("안무팀");
-                performanceTeam.addMember(new TeamMember(performanceTeam, participants.get(0)));
-                performanceTeam.addMember(new TeamMember(performanceTeam, participants.get(1)));
-                performanceTeam.addMember(new TeamMember(performanceTeam, participants.get(2)));
-
                 Team visualTeam = new Team("영상팀");
-                visualTeam.addMember(new TeamMember(visualTeam, participants.get(3)));
-                visualTeam.addMember(new TeamMember(visualTeam, participants.get(4)));
+                visualTeam.addMember(new TeamMember(visualTeam, participants.get(5)));
+                visualTeam.addMember(new TeamMember(visualTeam, participants.get(6)));
+
+                Team designTeam = new Team("디자인팀");
+                designTeam.addMember(new TeamMember(designTeam, participants.get(7)));
 
                 Team productionTeam = new Team("프로덕션팀");
-                productionTeam.addMember(new TeamMember(productionTeam, participants.get(5)));
-                productionTeam.addMember(new TeamMember(productionTeam, participants.get(7)));
+                productionTeam.addMember(new TeamMember(productionTeam, participants.get(8)));
 
-                teamRepository.saveAll(List.of(performanceTeam, visualTeam, productionTeam));
+                teamRepository.saveAll(List.of(visualTeam, designTeam, productionTeam));
             }
 
             if (resourceRepository.count() == 0L) {

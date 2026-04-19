@@ -221,7 +221,7 @@ test('separates member and staff participants in the form', () => {
       participants={[
         { id: 1, name: '예준', type: 'MEMBER' },
         { id: 2, name: '노아', type: 'MEMBER' },
-        { id: 3, name: '기술팀', type: 'STAFF' },
+        { id: 3, name: '카메라맨A', type: 'STAFF', teamId: 7, teamName: '영상팀' },
       ]}
       teams={[]}
       resources={[]}
@@ -236,9 +236,10 @@ test('separates member and staff participants in the form', () => {
   expect(within(memberSection).getByLabelText('예준')).toBeInTheDocument()
   expect(within(memberSection).getByLabelText('노아')).toBeInTheDocument()
   expect(within(memberSection).getByLabelText('아티스트 전체 선택')).toBeInTheDocument()
-  expect(within(memberSection).queryByLabelText('기술팀')).not.toBeInTheDocument()
+  expect(within(memberSection).queryByLabelText('카메라맨A')).not.toBeInTheDocument()
 
-  expect(within(staffSection).getByLabelText('기술팀')).toBeInTheDocument()
+  expect(within(staffSection).getByLabelText('카메라맨A')).toBeInTheDocument()
+  expect(within(staffSection).getByText('영상팀')).toBeInTheDocument()
   expect(within(staffSection).queryByLabelText('예준')).not.toBeInTheDocument()
 })
 
@@ -285,7 +286,7 @@ test('toggles all artists with the select-all checkbox without affecting staff',
       participants={[
         { id: 1, name: '예준', type: 'MEMBER' },
         { id: 2, name: '노아', type: 'MEMBER' },
-        { id: 3, name: '기술팀', type: 'STAFF' },
+        { id: 3, name: '카메라맨A', type: 'STAFF', teamId: 7, teamName: '영상팀' },
       ]}
       teams={[]}
       resources={[]}
@@ -299,7 +300,7 @@ test('toggles all artists with the select-all checkbox without affecting staff',
   const yeajun = within(memberSection).getByLabelText('예준')
   const noa = within(memberSection).getByLabelText('노아')
   const staff = screen.getByRole('group', { name: '스태프' })
-  const staffCheckbox = within(staff).getByLabelText('기술팀')
+  const staffCheckbox = within(staff).getByLabelText('카메라맨A')
 
   await user.click(selectAll)
 

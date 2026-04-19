@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.asterum.scheduler.common.exception.BadRequestException;
+import com.asterum.scheduler.participant.domain.Participant;
+import com.asterum.scheduler.participant.domain.ParticipantType;
 import com.asterum.scheduler.schedule.application.ScheduleCommandService;
 import com.asterum.scheduler.schedule.application.ScheduleQueryService;
 import com.asterum.scheduler.schedule.domain.RecurrenceType;
@@ -207,7 +209,7 @@ class ScheduleServiceTest {
     @Test
     void expandsTeamSelectionIntoParticipantSnapshotAndKeepsSelectedTeams() {
         Long teamId = teamRepository.findAll().stream()
-            .filter(team -> team.getName().equals("안무팀"))
+            .filter(team -> team.getName().equals("영상팀"))
             .map(Team::getId)
             .findFirst()
             .orElseThrow();
@@ -231,13 +233,13 @@ class ScheduleServiceTest {
         assertThat(created.teamIds()).containsExactly(teamId);
         assertThat(created.resource()).isNotNull();
         assertThat(created.resource().name()).isEqualTo("메인 스튜디오");
-        assertThat(created.participantIds()).containsExactly(1L, 2L, 3L, 5L);
+        assertThat(created.participantIds()).containsExactly(5L, 6L, 7L);
     }
 
     @Test
     void keepsRecurringTeamSnapshotStableWhenTeamMembershipChangesLater() {
         Team performanceTeam = teamRepository.findAll().stream()
-            .filter(team -> team.getName().equals("안무팀"))
+            .filter(team -> team.getName().equals("영상팀"))
             .findFirst()
             .orElseThrow();
 
@@ -252,15 +254,16 @@ class ScheduleServiceTest {
             new RecurrenceRequest(true, RecurrenceType.MONTHLY, 1, SeriesEndType.NEVER, null, null)
         ).toCommand());
 
+        Participant lateJoiner = participantRepository.save(new Participant("보조촬영E", ParticipantType.STAFF));
         performanceTeam.addMember(new TeamMember(
             performanceTeam,
-            participantRepository.findById(5L).orElseThrow()
+            lateJoiner
         ));
 
         ScheduleResponse augustOccurrence = listMonth(2026, 8).get(0);
 
         assertThat(augustOccurrence.teamIds()).containsExactly(performanceTeam.getId());
-        assertThat(augustOccurrence.participantIds()).containsExactly(1L, 2L, 3L);
+        assertThat(augustOccurrence.participantIds()).containsExactly(6L, 7L);
     }
 
     @Test
@@ -461,7 +464,7 @@ class ScheduleServiceTest {
     @Test
     void monthReadUsesStableSmallQueryCountEvenWhenOccurrenceCountGrows() {
         Long choreographyTeamId = teamRepository.findAll().stream()
-            .filter(team -> team.getName().equals("안무팀"))
+            .filter(team -> team.getName().equals("영상팀"))
             .map(Team::getId)
             .findFirst()
             .orElseThrow();

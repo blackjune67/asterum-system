@@ -52,4 +52,9 @@ public class Participant {
     public ParticipantType getType() {
         return type;
     }
+
+    public void rename(String name) {
+        this.name = name;
+        this.updatedAt = LocalDateTime.now();
+    }
 }

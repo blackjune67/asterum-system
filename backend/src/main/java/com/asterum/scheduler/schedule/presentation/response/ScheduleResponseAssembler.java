@@ -21,7 +21,7 @@ public class ScheduleResponseAssembler {
         List<ParticipantResponse> participants = occurrence.getParticipantLinks().stream()
             .map(ScheduleOccurrenceParticipant::getParticipant)
             .sorted(Comparator.comparing(Participant::getId))
-            .map(participant -> new ParticipantResponse(participant.getId(), participant.getName(), participant.getType()))
+            .map(ParticipantResponse::from)
             .toList();
 
         List<TeamResponse> teams = occurrence.getTeamLinks().stream()
@@ -67,7 +67,7 @@ public class ScheduleResponseAssembler {
 
     public ScheduleResponse toResponse(ScheduleMonthView view) {
         List<ParticipantResponse> participants = view.participants().stream()
-            .map(participant -> new ParticipantResponse(participant.id(), participant.name(), participant.type()))
+            .map(participant -> new ParticipantResponse(participant.id(), participant.name(), participant.type(), null, null))
             .toList();
 
         List<TeamResponse> teams = view.teams().stream()
@@ -76,7 +76,7 @@ public class ScheduleResponseAssembler {
                 team.name(),
                 team.members().stream().map(ScheduleMonthView.ParticipantView::id).toList(),
                 team.members().stream()
-                    .map(member -> new ParticipantResponse(member.id(), member.name(), member.type()))
+                    .map(member -> new ParticipantResponse(member.id(), member.name(), member.type(), team.id(), team.name()))
                     .toList()
             ))
             .toList();
