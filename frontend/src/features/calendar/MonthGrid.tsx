@@ -48,22 +48,10 @@ export function MonthGrid({ month, itemsByDate, onSelectDate, onSelectItem }: Pr
         const date = new Date(year, monthIndex, day)
         const isoDate = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
         const dayItems = itemsByDate.get(isoDate) ?? []
-
-        return (
-          <div
-            key={isoDate}
-            aria-label={`Open day ${isoDate}`}
-            className="dream-card min-h-36 p-3 text-left transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-accent/40"
-            onClick={() => onSelectDate(isoDate)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault()
-                onSelectDate(isoDate)
-              }
-            }}
-            role="button"
-            tabIndex={0}
-          >
+        const isCreateTarget = dayItems.length === 0
+        const cellClassName = 'dream-card min-h-36 p-3 text-left transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-accent/40'
+        const content = (
+          <>
             <div className="flex items-center justify-between">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-sm font-bold text-ink shadow-sm">
                 {day}
@@ -84,6 +72,26 @@ export function MonthGrid({ month, itemsByDate, onSelectDate, onSelectItem }: Pr
                 />
               ))}
             </div>
+          </>
+        )
+
+        if (isCreateTarget) {
+          return (
+            <button
+              key={isoDate}
+              aria-label={`Open day ${isoDate}`}
+              className={cellClassName}
+              onClick={() => onSelectDate(isoDate)}
+              type="button"
+            >
+              {content}
+            </button>
+          )
+        }
+
+        return (
+          <div key={isoDate} className={cellClassName}>
+            {content}
           </div>
         )
       })}

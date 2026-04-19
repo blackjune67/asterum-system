@@ -203,6 +203,24 @@ describe('CalendarPage', () => {
     expect(screen.getByLabelText('장소')).toHaveValue('')
   })
 
+  test('does not open the create modal when clicking empty space on a day with schedules', async () => {
+    const user = userEvent.setup()
+
+    fetchMock.mockResolvedValueOnce(createJsonResponse([createScheduleItem()]))
+    mockInitialLookups()
+
+    renderWithQueryClient(<CalendarPage />)
+
+    const occupiedDayCell = (await screen.findByText('15')).closest('.dream-card')
+
+    expect(occupiedDayCell).not.toBeNull()
+
+    await user.click(occupiedDayCell!)
+
+    expect(screen.queryByRole('heading', { name: '일정 등록' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Shoot' })).not.toBeInTheDocument()
+  })
+
   test('asks for a delete scope when removing a recurring schedule', async () => {
     const user = userEvent.setup()
 
