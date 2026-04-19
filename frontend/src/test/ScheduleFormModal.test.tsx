@@ -27,7 +27,7 @@ test('shows recurrence fields when recurring is enabled', async () => {
   expect(screen.getByText('종료 조건')).toBeInTheDocument()
 })
 
-test('defaults recurrence type to daily and updates repeat options per type', async () => {
+test('defaults recurrence type to daily and explains repeat interval options per type', async () => {
   const user = userEvent.setup()
 
   render(
@@ -46,21 +46,21 @@ test('defaults recurrence type to daily and updates repeat options per type', as
   await user.click(screen.getByLabelText('반복 일정'))
 
   expect(screen.getByLabelText('반복 유형')).toHaveValue('DAILY')
-  expect(screen.getByLabelText('반복')).toHaveValue('1')
-  expect(screen.getByRole('option', { name: '1일' })).toBeInTheDocument()
-  expect(screen.getByRole('option', { name: '99일' })).toBeInTheDocument()
+  expect(screen.getByLabelText('반복 간격')).toHaveValue('1')
+  expect(screen.getByRole('option', { name: '1일마다' })).toBeInTheDocument()
+  expect(screen.getByRole('option', { name: '99일마다' })).toBeInTheDocument()
 
   await user.selectOptions(screen.getByLabelText('반복 유형'), 'WEEKLY')
 
-  expect(screen.getByRole('option', { name: '1주' })).toBeInTheDocument()
-  expect(screen.getByRole('option', { name: '99주' })).toBeInTheDocument()
-  expect(screen.queryByRole('option', { name: '1일' })).not.toBeInTheDocument()
+  expect(screen.getByRole('option', { name: '1주마다' })).toBeInTheDocument()
+  expect(screen.getByRole('option', { name: '99주마다' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: '1일마다' })).not.toBeInTheDocument()
 
   await user.selectOptions(screen.getByLabelText('반복 유형'), 'MONTHLY')
 
-  expect(screen.getByRole('option', { name: '1개월' })).toBeInTheDocument()
-  expect(screen.getByRole('option', { name: '99개월' })).toBeInTheDocument()
-  expect(screen.queryByRole('option', { name: '1주' })).not.toBeInTheDocument()
+  expect(screen.getByRole('option', { name: '1개월마다' })).toBeInTheDocument()
+  expect(screen.getByRole('option', { name: '99개월마다' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: '1주마다' })).not.toBeInTheDocument()
 }, 15000)
 
 test('uses a select for recurring count with options up to 10', async () => {
@@ -191,7 +191,7 @@ test('loads edit mode values from the selected item', () => {
   expect(screen.getByLabelText('날짜')).toHaveValue('2026-04-23')
   expect(screen.getByLabelText('시작 시간')).toHaveValue('09:30')
   expect(screen.getByLabelText('종료 시간')).toHaveValue('11:00')
-  expect(screen.getByLabelText('리소스')).toHaveValue('3')
+  expect(screen.getByLabelText('장소')).toHaveValue('3')
 })
 
 test('constrains the modal within the viewport and enables internal scrolling', () => {

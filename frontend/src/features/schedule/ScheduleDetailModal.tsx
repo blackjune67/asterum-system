@@ -140,7 +140,7 @@ export function ScheduleDetailModal({ item, onClose, onEdit, onConvert, onDelete
             <ReadonlyField label="종료 시간" value={normalizeTime(item.endTime)} />
           </div>
 
-          <ReadonlyField label="리소스" value={item.resource ? `${item.resource.name} (${item.resource.category})` : '선택 안 함'} />
+          <ReadonlyField label="장소" value={item.resource ? `${item.resource.name} (${item.resource.category})` : '선택 안 함'} />
 
           <ReadonlyField label="반복 일정" value={formatRecurrence(item.recurrence)} />
 

@@ -200,7 +200,7 @@ describe('CalendarPage', () => {
 
     expect(screen.getByRole('heading', { name: '일정 등록' })).toBeInTheDocument()
     expect(screen.getByLabelText('날짜')).toHaveValue('2026-04-15')
-    expect(screen.getByLabelText('리소스')).toHaveValue('')
+    expect(screen.getByLabelText('장소')).toHaveValue('')
   })
 
   test('asks for a delete scope when removing a recurring schedule', async () => {

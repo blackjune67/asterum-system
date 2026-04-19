@@ -70,7 +70,7 @@ describe('weekTimeline', () => {
     expect(rows).toHaveLength(2)
     expect(rows[0].label).toBe('스튜디오 A')
     expect(rows[0].days.find((day) => day.date === '2026-04-15')?.laneCount).toBe(2)
-    expect(rows[1].label).toBe('리소스 미지정')
+    expect(rows[1].label).toBe('장소 미지정')
     expect(rows[1].days.find((day) => day.date === '2026-04-15')?.blocks[0].clippedStart).toBe(true)
   })
 

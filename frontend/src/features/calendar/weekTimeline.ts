@@ -161,11 +161,11 @@ function toRowKey(item: ScheduleItem) {
 }
 
 function toRowLabel(item: ScheduleItem) {
-  return item.resource ? item.resource.name : '리소스 미지정'
+  return item.resource ? item.resource.name : '장소 미지정'
 }
 
 function toRowDescription(item: ScheduleItem) {
-  return item.resource ? item.resource.category : '미지정 리소스'
+  return item.resource ? item.resource.category : '미지정 장소'
 }
 
 function compareVisibleBlocks(a: VisibleBlock, b: VisibleBlock) {
