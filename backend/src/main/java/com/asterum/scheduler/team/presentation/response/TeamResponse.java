@@ -14,7 +14,7 @@ public record TeamResponse(
         List<ParticipantResponse> members = team.getMembers().stream()
             .map(member -> member.getParticipant())
             .sorted(java.util.Comparator.comparing(participant -> participant.getId()))
-            .map(ParticipantResponse::from)
+            .map(participant -> ParticipantResponse.from(participant, team.getId(), team.getName()))
             .toList();
 
         return new TeamResponse(

@@ -38,10 +38,20 @@ public enum ErrorCode {
         "참여자를 찾을 수 없음",
         "일부 참여자가 존재하지 않습니다"
     ),
+    PARTICIPANT_NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        "참여자를 찾을 수 없음",
+        "참여자 %s를 찾을 수 없습니다"
+    ),
     TEAMS_NOT_FOUND(
         HttpStatus.BAD_REQUEST,
         "팀을 찾을 수 없음",
         "일부 팀이 존재하지 않습니다"
+    ),
+    TEAM_NOT_FOUND(
+        HttpStatus.NOT_FOUND,
+        "팀을 찾을 수 없음",
+        "팀 %s를 찾을 수 없습니다"
     ),
     RESOURCE_NOT_FOUND(
         HttpStatus.BAD_REQUEST,
@@ -57,6 +67,41 @@ public enum ErrorCode {
         HttpStatus.BAD_REQUEST,
         "요청 검증 실패",
         "%s"
+    ),
+    STAFF_TYPE_REQUIRED(
+        HttpStatus.BAD_REQUEST,
+        "개인 스태프 타입 필요",
+        "개인 스태프 등록과 수정은 STAFF 타입만 지원합니다"
+    ),
+    STAFF_TEAM_REQUIRED(
+        HttpStatus.BAD_REQUEST,
+        "개인 스태프 소속 팀 필요",
+        "개인 스태프는 반드시 하나의 팀에 소속되어야 합니다"
+    ),
+    PARTICIPANT_NAME_DUPLICATE(
+        HttpStatus.BAD_REQUEST,
+        "중복된 참여자 이름",
+        "이미 사용 중인 참여자 이름입니다: %s"
+    ),
+    TEAM_NAME_DUPLICATE(
+        HttpStatus.BAD_REQUEST,
+        "중복된 팀 이름",
+        "이미 사용 중인 팀 이름입니다: %s"
+    ),
+    PARTICIPANT_IN_USE(
+        HttpStatus.BAD_REQUEST,
+        "사용 중인 참여자",
+        "일정에서 사용 중인 개인 스태프는 삭제할 수 없습니다"
+    ),
+    TEAM_IN_USE(
+        HttpStatus.BAD_REQUEST,
+        "사용 중인 팀",
+        "일정에서 사용 중인 팀은 삭제할 수 없습니다"
+    ),
+    TEAM_HAS_MEMBERS(
+        HttpStatus.BAD_REQUEST,
+        "팀 멤버 존재",
+        "소속 개인 스태프가 남아 있는 팀은 삭제할 수 없습니다"
     ),
     SCHEDULE_OCCURRENCE_NOT_FOUND(
         HttpStatus.NOT_FOUND,

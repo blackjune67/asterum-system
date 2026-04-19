@@ -60,6 +60,7 @@ export function ParticipantSelect({ participants, selectedIds, onChange }: Props
                     className="dream-card flex cursor-pointer items-center gap-3 px-4 py-3 text-sm"
                   >
                     <input
+                      aria-label={participant.name}
                       className="h-4 w-4 accent-accent"
                       type="checkbox"
                       checked={checked}
@@ -80,7 +81,12 @@ export function ParticipantSelect({ participants, selectedIds, onChange }: Props
                         src={characterImage}
                       />
                     )}
-                    <span className="text-plum">{participant.name}</span>
+                    <div className="grid gap-1">
+                      <span className="text-plum">{participant.name}</span>
+                      {participant.type === 'STAFF' && participant.teamName && (
+                        <span className="text-xs text-plum/70">{participant.teamName}</span>
+                      )}
+                    </div>
                   </label>
                 )
               })}

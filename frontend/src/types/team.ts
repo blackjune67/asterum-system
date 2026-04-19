@@ -6,3 +6,7 @@ export interface Team {
   memberIds: number[]
   members: Participant[]
 }
+
+export interface TeamMutationPayload {
+  name: string
+}

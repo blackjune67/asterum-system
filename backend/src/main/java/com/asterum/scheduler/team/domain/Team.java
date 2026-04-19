@@ -46,6 +46,20 @@ public class Team {
         updatedAt = LocalDateTime.now();
     }
 
+    public void addMember(com.asterum.scheduler.participant.domain.Participant participant) {
+        addMember(new TeamMember(this, participant));
+    }
+
+    public void removeMember(Long participantId) {
+        members.removeIf(member -> member.getParticipant().getId().equals(participantId));
+        updatedAt = LocalDateTime.now();
+    }
+
+    public void rename(String name) {
+        this.name = name;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public Long getId() {
         return id;
     }

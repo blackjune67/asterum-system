@@ -1,4 +1,4 @@
-import { startTransition, useMemo } from 'react'
+import { startTransition, useMemo, useState } from 'react'
 import { MonthGrid } from './MonthGrid'
 import { useCalendarState } from './useCalendarState'
 import { useCalendarUiStore } from './calendarUiStore'
@@ -7,6 +7,7 @@ import { ScheduleDetailModal } from '../schedule/ScheduleDetailModal'
 import { ScheduleFormModal } from '../schedule/ScheduleFormModal'
 import { ScopePickerModal } from '../schedule/ScopePickerModal'
 import { ScheduleConvertModal } from '../schedule/ScheduleConvertModal'
+import { StaffTeamManagementModal } from '../participant/StaffTeamManagementModal'
 
 export function CalendarPage() {
   const {
@@ -23,7 +24,14 @@ export function CalendarPage() {
     handleDelete,
     applyScope,
     submitConvert,
+    createStaff,
+    updateStaff,
+    deleteStaff,
+    createTeamItem,
+    updateTeamItem,
+    deleteTeamItem,
   } = useCalendarState()
+  const [managementOpen, setManagementOpen] = useState(false)
   const currentMonth = useCalendarUiStore((state) => state.currentMonth)
   const selectedDate = useCalendarUiStore((state) => state.selectedDate)
   const detailOpen = useCalendarUiStore((state) => state.detailOpen)
@@ -97,6 +105,9 @@ export function CalendarPage() {
             </div>
 
             <div className="flex flex-wrap gap-2 xl:justify-end">
+              <button className="dream-button-secondary" onClick={() => setManagementOpen(true)}>
+                참가자/팀 관리
+              </button>
               <button
                 className="dream-button-secondary"
                 onClick={() => {
@@ -188,6 +199,19 @@ export function CalendarPage() {
         mode={scopeMode}
         onPick={applyScope}
         onClose={closeScope}
+      />
+
+      <StaffTeamManagementModal
+        open={managementOpen}
+        participants={participants}
+        teams={teams}
+        onClose={() => setManagementOpen(false)}
+        onCreateStaff={createStaff}
+        onUpdateStaff={updateStaff}
+        onDeleteStaff={deleteStaff}
+        onCreateTeam={createTeamItem}
+        onUpdateTeam={updateTeamItem}
+        onDeleteTeam={deleteTeamItem}
       />
     </>
   )

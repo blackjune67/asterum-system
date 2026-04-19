@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchParticipants } from '../../api/participants'
+import { createParticipant, deleteParticipant, fetchParticipants, updateParticipant } from '../../api/participants'
 import { fetchResources } from '../../api/resources'
 import {
   convertScheduleToSeries,
@@ -10,8 +10,8 @@ import {
   fetchSchedules,
   updateSchedule,
 } from '../../api/schedules'
-import { fetchTeams } from '../../api/teams'
-import type { Participant } from '../../types/participant'
+import { createTeam, deleteTeam, fetchTeams, updateTeam } from '../../api/teams'
+import type { Participant, StaffMutationPayload } from '../../types/participant'
 import type { ResourceItem } from '../../types/resource'
 import type {
   ScheduleConvertPayload,
@@ -19,7 +19,7 @@ import type {
   ScheduleUpdatePayload,
   ScopeType,
 } from '../../types/schedule'
-import type { Team } from '../../types/team'
+import type { Team, TeamMutationPayload } from '../../types/team'
 import { calendarUiStore, useCalendarUiStore } from './calendarUiStore'
 import { calendarQueryKeys } from './queryKeys'
 
@@ -99,6 +99,24 @@ export function useCalendarState() {
     mutationFn: ({ id, payload }: { id: number; payload: ScheduleConvertPayload }) =>
       convertScheduleToSeries(id, payload),
   })
+  const createParticipantMutation = useMutation({
+    mutationFn: (payload: StaffMutationPayload) => createParticipant(payload),
+  })
+  const updateParticipantMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: StaffMutationPayload }) => updateParticipant(id, payload),
+  })
+  const deleteParticipantMutation = useMutation({
+    mutationFn: (id: number) => deleteParticipant(id),
+  })
+  const createTeamMutation = useMutation({
+    mutationFn: (payload: TeamMutationPayload) => createTeam(payload),
+  })
+  const updateTeamMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: TeamMutationPayload }) => updateTeam(id, payload),
+  })
+  const deleteTeamMutation = useMutation({
+    mutationFn: (id: number) => deleteTeam(id),
+  })
 
   const items = monthQuery.data ?? []
   const participants: Participant[] = participantsQuery.data ?? []
@@ -118,6 +136,13 @@ export function useCalendarState() {
     await queryClient.invalidateQueries({
       queryKey: calendarQueryKeys.months(),
     })
+  }
+
+  async function invalidateLookupQueries() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: calendarQueryKeys.participants() }),
+      queryClient.invalidateQueries({ queryKey: calendarQueryKeys.teams() }),
+    ])
   }
 
   async function submitCreate(payload: ScheduleCreatePayload | ScheduleUpdatePayload) {
@@ -253,6 +278,60 @@ export function useCalendarState() {
     }
   }
 
+  async function createStaff(payload: StaffMutationPayload) {
+    try {
+      await createParticipantMutation.mutateAsync(payload)
+      await invalidateLookupQueries()
+    } catch (error) {
+      throw new Error(toErrorMessage(error, '개인 스태프를 등록하지 못했습니다.'))
+    }
+  }
+
+  async function updateStaff(id: number, payload: StaffMutationPayload) {
+    try {
+      await updateParticipantMutation.mutateAsync({ id, payload })
+      await invalidateLookupQueries()
+    } catch (error) {
+      throw new Error(toErrorMessage(error, '개인 스태프를 수정하지 못했습니다.'))
+    }
+  }
+
+  async function deleteStaff(id: number) {
+    try {
+      await deleteParticipantMutation.mutateAsync(id)
+      await invalidateLookupQueries()
+    } catch (error) {
+      throw new Error(toErrorMessage(error, '개인 스태프를 삭제하지 못했습니다.'))
+    }
+  }
+
+  async function createTeamItem(payload: TeamMutationPayload) {
+    try {
+      await createTeamMutation.mutateAsync(payload)
+      await invalidateLookupQueries()
+    } catch (error) {
+      throw new Error(toErrorMessage(error, '팀을 등록하지 못했습니다.'))
+    }
+  }
+
+  async function updateTeamItem(id: number, payload: TeamMutationPayload) {
+    try {
+      await updateTeamMutation.mutateAsync({ id, payload })
+      await invalidateLookupQueries()
+    } catch (error) {
+      throw new Error(toErrorMessage(error, '팀을 수정하지 못했습니다.'))
+    }
+  }
+
+  async function deleteTeamItem(id: number) {
+    try {
+      await deleteTeamMutation.mutateAsync(id)
+      await invalidateLookupQueries()
+    } catch (error) {
+      throw new Error(toErrorMessage(error, '팀을 삭제하지 못했습니다.'))
+    }
+  }
+
   return {
     items,
     participants,
@@ -267,5 +346,11 @@ export function useCalendarState() {
     handleDelete,
     applyScope,
     submitConvert,
+    createStaff,
+    updateStaff,
+    deleteStaff,
+    createTeamItem,
+    updateTeamItem,
+    deleteTeamItem,
   }
 }
