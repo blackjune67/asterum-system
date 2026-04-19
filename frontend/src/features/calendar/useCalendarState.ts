@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchParticipants } from '../../api/participants'
 import { fetchResources } from '../../api/resources'
@@ -16,12 +16,11 @@ import type { ResourceItem } from '../../types/resource'
 import type {
   ScheduleConvertPayload,
   ScheduleCreatePayload,
-  ScheduleItem,
   ScheduleUpdatePayload,
   ScopeType,
 } from '../../types/schedule'
 import type { Team } from '../../types/team'
-import { toDateInputValue } from '../schedule/dateUtils'
+import { calendarUiStore, useCalendarUiStore } from './calendarUiStore'
 import { calendarQueryKeys } from './queryKeys'
 
 function toErrorMessage(error: unknown, fallback: string) {
@@ -30,23 +29,19 @@ function toErrorMessage(error: unknown, fallback: string) {
 
 export function useCalendarState() {
   const queryClient = useQueryClient()
-  const [currentMonth, setCurrentMonth] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth(), 1)
-  })
-  const [selectedDate, setSelectedDate] = useState(toDateInputValue(new Date()))
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
-  const [detailRequested, setDetailRequested] = useState(false)
-  const [detailOpen, setDetailOpen] = useState(false)
-  const [formOpen, setFormOpen] = useState(false)
-  const [formMode, setFormMode] = useState<'create' | 'edit'>('create')
-  const [convertOpen, setConvertOpen] = useState(false)
-  const [scopeOpen, setScopeOpen] = useState(false)
-  const [scopeMode, setScopeMode] = useState<'edit' | 'delete'>('edit')
-  const [pendingUpdate, setPendingUpdate] = useState<ScheduleUpdatePayload | null>(null)
-  const [detailError, setDetailError] = useState<string | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [convertError, setConvertError] = useState<string | null>(null)
+  const currentMonth = useCalendarUiStore((state) => state.currentMonth)
+  const selectedItemId = useCalendarUiStore((state) => state.selectedItemId)
+  const detailRequested = useCalendarUiStore((state) => state.detailRequested)
+  const detailOpen = useCalendarUiStore((state) => state.detailOpen)
+  const pendingUpdate = useCalendarUiStore((state) => state.pendingUpdate)
+  const scopeMode = useCalendarUiStore((state) => state.scopeMode)
+  const scopeOpen = useCalendarUiStore((state) => state.scopeOpen)
+  const setFormError = useCalendarUiStore((state) => state.setFormError)
+  const setDetailError = useCalendarUiStore((state) => state.setDetailError)
+  const setConvertError = useCalendarUiStore((state) => state.setConvertError)
+  const openDetailSuccess = useCalendarUiStore((state) => state.openDetailSuccess)
+  const openDetailFailure = useCalendarUiStore((state) => state.openDetailFailure)
+  const openScope = useCalendarUiStore((state) => state.openScope)
   const currentYear = currentMonth.getFullYear()
   const currentMonthNumber = currentMonth.getMonth() + 1
 
@@ -81,19 +76,14 @@ export function useCalendarState() {
     if (selectedItemId === null || !detailRequested) return
 
     if (detailQuery.isSuccess && !detailOpen) {
-      setDetailRequested(false)
-      setDetailError(null)
-      setDetailOpen(true)
+      openDetailSuccess()
       return
     }
 
     if (detailQuery.isError) {
-      setDetailRequested(false)
-      setSelectedItemId(null)
-      setDetailOpen(false)
-      setDetailError('일정 상세 정보를 불러오지 못했습니다.')
+      openDetailFailure('일정 상세 정보를 불러오지 못했습니다.')
     }
-  }, [detailOpen, detailQuery.isError, detailQuery.isSuccess, detailRequested, selectedItemId])
+  }, [detailOpen, detailQuery.isError, detailQuery.isSuccess, detailRequested, openDetailFailure, openDetailSuccess, selectedItemId])
 
   const createMutation = useMutation({
     mutationFn: (payload: ScheduleCreatePayload) => createSchedule(payload),
@@ -115,8 +105,7 @@ export function useCalendarState() {
   const teams: Team[] = teamsQuery.data ?? []
   const resources: ResourceItem[] = resourcesQuery.data ?? []
   const selectedItem = detailQuery.data ?? null
-  const lookupError =
-    participantsQuery.error ?? teamsQuery.error ?? resourcesQuery.error
+  const lookupError = participantsQuery.error ?? teamsQuery.error ?? resourcesQuery.error
   const error = monthQuery.error
     ? toErrorMessage(monthQuery.error, 'Failed to load calendar data')
     : lookupError
@@ -131,25 +120,13 @@ export function useCalendarState() {
     })
   }
 
-  function openCreate(date: string) {
-    setFormError(null)
-    setSelectedDate(date)
-    setFormMode('create')
-    setFormOpen(true)
-  }
-
-  function openDetail(item: ScheduleItem) {
-    setDetailRequested(true)
-    setDetailError(null)
-    setDetailOpen(false)
-    setSelectedItemId(item.id)
-  }
-
   async function submitCreate(payload: ScheduleCreatePayload | ScheduleUpdatePayload) {
     try {
       await createMutation.mutateAsync(payload as ScheduleCreatePayload)
-      setFormError(null)
-      setFormOpen(false)
+      calendarUiStore.setState({
+        formError: null,
+        formOpen: false,
+      })
       await invalidateMonthQueries()
     } catch (error) {
       setFormError(toErrorMessage(error, '일정을 저장하지 못했습니다.'))
@@ -161,10 +138,10 @@ export function useCalendarState() {
 
     const updatePayload = payload as ScheduleUpdatePayload
     if (selectedItem.isRecurring) {
-      setPendingUpdate(updatePayload)
-      setScopeMode('edit')
-      setScopeOpen(true)
-      setFormOpen(false)
+      openScope('edit', updatePayload)
+      calendarUiStore.setState({
+        formOpen: false,
+      })
       return
     }
 
@@ -174,10 +151,13 @@ export function useCalendarState() {
         scope: 'THIS',
         payload: updatePayload,
       })
-      setFormError(null)
-      setFormOpen(false)
-      setDetailOpen(false)
-      setSelectedItemId(null)
+      calendarUiStore.setState({
+        formError: null,
+        formOpen: false,
+        detailOpen: false,
+        selectedItemId: null,
+        pendingUpdate: null,
+      })
       await invalidateMonthQueries()
     } catch (error) {
       setFormError(toErrorMessage(error, '일정을 수정하지 못했습니다.'))
@@ -188,8 +168,7 @@ export function useCalendarState() {
     if (!selectedItem) return
 
     if (selectedItem.isRecurring && scope === 'THIS' && !scopeOpen) {
-      setScopeMode('delete')
-      setScopeOpen(true)
+      openScope('delete')
       return
     }
 
@@ -198,10 +177,13 @@ export function useCalendarState() {
         id: selectedItem.id,
         scope,
       })
-      setDetailError(null)
-      setDetailOpen(false)
-      setScopeOpen(false)
-      setSelectedItemId(null)
+      calendarUiStore.setState({
+        detailError: null,
+        detailOpen: false,
+        scopeOpen: false,
+        selectedItemId: null,
+        pendingUpdate: null,
+      })
       await invalidateMonthQueries()
     } catch (error) {
       setDetailError(toErrorMessage(error, '일정을 삭제하지 못했습니다.'))
@@ -217,8 +199,10 @@ export function useCalendarState() {
           id: selectedItem.id,
           scope,
         })
-        setDetailOpen(false)
-        setSelectedItemId(null)
+        calendarUiStore.setState({
+          detailOpen: false,
+          selectedItemId: null,
+        })
       }
 
       if (scopeMode === 'edit' && pendingUpdate) {
@@ -227,17 +211,21 @@ export function useCalendarState() {
           scope,
           payload: pendingUpdate,
         })
-        setPendingUpdate(null)
-        setSelectedItemId(null)
+        calendarUiStore.setState({
+          selectedItemId: null,
+          pendingUpdate: null,
+        })
       }
 
-      setFormError(null)
-      setDetailError(null)
-      setScopeOpen(false)
+      calendarUiStore.setState({
+        formError: null,
+        detailError: null,
+        scopeOpen: false,
+        pendingUpdate: null,
+      })
       await invalidateMonthQueries()
     } catch (error) {
-      const message =
-        scopeMode === 'delete' ? '일정을 삭제하지 못했습니다.' : '일정을 수정하지 못했습니다.'
+      const message = scopeMode === 'delete' ? '일정을 삭제하지 못했습니다.' : '일정을 수정하지 못했습니다.'
       setDetailError(toErrorMessage(error, message))
     }
   }
@@ -251,12 +239,14 @@ export function useCalendarState() {
         payload,
       })
       queryClient.setQueryData(calendarQueryKeys.detail(converted.id), converted)
-      setConvertError(null)
-      setConvertOpen(false)
-      setDetailError(null)
-      setDetailRequested(false)
-      setSelectedItemId(converted.id)
-      setDetailOpen(true)
+      calendarUiStore.setState({
+        convertError: null,
+        convertOpen: false,
+        detailError: null,
+        detailRequested: false,
+        selectedItemId: converted.id,
+        detailOpen: true,
+      })
       await invalidateMonthQueries()
     } catch (error) {
       setConvertError(toErrorMessage(error, '반복 일정으로 전환하지 못했습니다.'))
@@ -264,72 +254,18 @@ export function useCalendarState() {
   }
 
   return {
-    currentMonth,
     items,
     participants,
     teams,
     resources,
-    selectedDate,
     selectedItem,
-    detailOpen,
-    formOpen,
-    formMode,
-    convertOpen,
-    scopeOpen,
-    scopeMode,
     loading,
     error,
     detailLoading,
-    detailError,
-    formError,
-    convertError,
-    setCurrentMonth,
-    openCreate,
-    openDetail,
     submitCreate,
     submitEdit,
     handleDelete,
     applyScope,
     submitConvert,
-    closeForm() {
-      setFormError(null)
-      setFormOpen(false)
-    },
-    closeDetail() {
-      setDetailRequested(false)
-      setDetailError(null)
-      setDetailOpen(false)
-      setSelectedItemId(null)
-    },
-    openConvert() {
-      if (!selectedItem || selectedItem.isRecurring) return
-      setDetailRequested(false)
-      setConvertError(null)
-      setDetailOpen(false)
-      setConvertOpen(true)
-    },
-    closeConvert() {
-      setConvertError(null)
-      setConvertOpen(false)
-    },
-    goToPreviousMonth() {
-      setCurrentMonth((value) => new Date(value.getFullYear(), value.getMonth() - 1, 1))
-    },
-    goToNextMonth() {
-      setCurrentMonth((value) => new Date(value.getFullYear(), value.getMonth() + 1, 1))
-    },
-    openCreateForCurrentMonth() {
-      openCreate(`${currentYear}-${String(currentMonthNumber).padStart(2, '0')}-01`)
-    },
-    startEdit() {
-      setDetailRequested(false)
-      setFormMode('edit')
-      setDetailOpen(false)
-      setFormOpen(true)
-    },
-    closeScope() {
-      setScopeOpen(false)
-      setPendingUpdate(null)
-    },
   }
 }
