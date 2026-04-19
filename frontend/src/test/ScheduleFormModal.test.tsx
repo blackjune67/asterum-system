@@ -63,7 +63,7 @@ test('defaults recurrence type to daily and updates repeat options per type', as
   expect(screen.queryByRole('option', { name: '1주' })).not.toBeInTheDocument()
 }, 15000)
 
-test('caps recurring count at 50', async () => {
+test('uses a select for recurring count with options up to 10', async () => {
   const user = userEvent.setup()
   const onSubmit = vi.fn().mockResolvedValue(undefined)
 
@@ -82,18 +82,20 @@ test('caps recurring count at 50', async () => {
 
   await user.type(screen.getByLabelText('제목'), '반복 일정 테스트')
   await user.click(screen.getByLabelText('반복 일정'))
-  await user.clear(screen.getByLabelText('반복 횟수'))
-  await user.type(screen.getByLabelText('반복 횟수'), '99')
+  await user.selectOptions(screen.getByLabelText('반복 횟수'), '10')
 
-  expect(screen.getByLabelText('반복 횟수')).toHaveAttribute('max', '50')
-  expect(screen.getByLabelText('반복 횟수')).toHaveValue(50)
+  expect(screen.getByLabelText('반복 횟수').tagName).toBe('SELECT')
+  expect(screen.getByRole('option', { name: '1회' })).toBeInTheDocument()
+  expect(screen.getByRole('option', { name: '10회' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: '11회' })).not.toBeInTheDocument()
+  expect(screen.getByLabelText('반복 횟수')).toHaveValue('10')
 
   await user.click(screen.getByRole('button', { name: '저장' }))
 
   expect(onSubmit).toHaveBeenCalledWith(
     expect.objectContaining({
       recurrence: expect.objectContaining({
-        count: 50,
+        count: 10,
       }),
     }),
   )

@@ -82,7 +82,7 @@ export function CalendarPage() {
           <div className="grid gap-6 xl:grid-cols-[1fr_auto] xl:items-start">
             <div className="grid gap-5">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.34em] text-accent">Comeback Board</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.34em] text-accent">Board</p>
                 <div className="mt-3 flex flex-wrap items-center gap-3">
                   <h2 className="text-3xl font-bold text-ink sm:text-4xl">{monthLabel(currentMonth)}</h2>
                   <div className="flex flex-wrap gap-2">

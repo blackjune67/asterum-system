@@ -58,6 +58,16 @@ function getRepeatOptions(type: RecurrenceType) {
   })
 }
 
+function getCountOptions() {
+  return Array.from({ length: 10 }, (_, index) => {
+    const value = index + 1
+    return {
+      value,
+      label: `${value}회`,
+    }
+  })
+}
+
 function buildInitialFormState(mode: Props['mode'], selectedDate: string, initialItem?: ScheduleItem | null): FormState {
   if (mode === 'edit' && initialItem) {
     return {
@@ -73,7 +83,7 @@ function buildInitialFormState(mode: Props['mode'], selectedDate: string, initia
       interval: clampNumber(initialItem.recurrence?.interval ?? 1, 1, 99),
       endType: initialItem.recurrence?.endType ?? 'COUNT',
       untilDate: initialItem.recurrence?.untilDate ?? initialItem.date,
-      count: clampNumber(initialItem.recurrence?.count ?? 8, 1, 50),
+      count: clampNumber(initialItem.recurrence?.count ?? 8, 1, 10),
     }
   }
 
@@ -108,6 +118,7 @@ export function ScheduleFormModal({
 }: Props) {
   const [form, setForm] = useState(() => buildInitialFormState(mode, selectedDate, initialItem))
   const repeatOptions = getRepeatOptions(form.recurrenceType)
+  const countOptions = getCountOptions()
 
   useEffect(() => {
     if (!open) return
@@ -351,19 +362,22 @@ export function ScheduleFormModal({
                   {form.endType === 'COUNT' && (
                     <label className="grid gap-2">
                       <span className="text-sm font-medium text-plum">반복 횟수</span>
-                      <input
+                      <select
                         className="dream-field"
-                        max={50}
-                        min={1}
-                        type="number"
-                        value={form.count}
+                        value={String(form.count)}
                         onChange={(event) =>
                           setForm((current) => ({
                             ...current,
-                            count: clampNumber(Number(event.target.value), 1, 50),
+                            count: Number(event.target.value),
                           }))
                         }
-                      />
+                      >
+                        {countOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                   )}
                   {form.endType === 'UNTIL_DATE' && (
