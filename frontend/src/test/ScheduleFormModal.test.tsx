@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScheduleFormModal } from '../features/schedule/ScheduleFormModal'
 import type { ScheduleItem } from '../types/schedule'
+import { within } from '@testing-library/react'
 
 test('shows recurrence fields when recurring is enabled', async () => {
   const user = userEvent.setup()
@@ -116,4 +117,33 @@ test('loads edit mode values from the selected item', () => {
   expect(screen.getByLabelText('시작 시간')).toHaveValue('09:30')
   expect(screen.getByLabelText('종료 시간')).toHaveValue('11:00')
   expect(screen.getByLabelText('리소스')).toHaveValue('3')
+})
+
+test('separates member and staff participants in the form', () => {
+  render(
+    <ScheduleFormModal
+      open={true}
+      mode="create"
+      selectedDate="2026-04-20"
+      participants={[
+        { id: 1, name: '예준', type: 'MEMBER' },
+        { id: 2, name: '노아', type: 'MEMBER' },
+        { id: 3, name: '기술팀', type: 'STAFF' },
+      ]}
+      teams={[]}
+      resources={[]}
+      onClose={() => {}}
+      onSubmit={async () => {}}
+    />,
+  )
+
+  const memberSection = screen.getByRole('group', { name: '아티스트' })
+  const staffSection = screen.getByRole('group', { name: '스태프' })
+
+  expect(within(memberSection).getByLabelText('예준')).toBeInTheDocument()
+  expect(within(memberSection).getByLabelText('노아')).toBeInTheDocument()
+  expect(within(memberSection).queryByLabelText('기술팀')).not.toBeInTheDocument()
+
+  expect(within(staffSection).getByLabelText('기술팀')).toBeInTheDocument()
+  expect(within(staffSection).queryByLabelText('예준')).not.toBeInTheDocument()
 })
