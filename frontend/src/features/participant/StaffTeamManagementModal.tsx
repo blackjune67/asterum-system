@@ -203,7 +203,7 @@ export function StaffTeamManagementModal({
               <div className="grid gap-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Editor</p>
                 <h4 className="text-base font-semibold text-ink">개인 스태프 편집</h4>
-                <p className="text-xs text-plum">이름과 소속 팀을 정리해 일정 등록 화면에서 바로 선택할 수 있게 합니다.</p>
+                <p className="text-xs text-plum">일정 등록 화면에서 선택할 수 있도록 스태프와 팀을 등록합니다.</p>
               </div>
 
               <label className={compactEditorFieldWrapClass}>
@@ -298,7 +298,7 @@ export function StaffTeamManagementModal({
               <div className="grid gap-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Editor</p>
                 <h4 className="text-base font-semibold text-ink">팀 편집</h4>
-                <p className="text-xs text-plum">현장 성격에 맞는 팀 구성을 만들고, 스태프 배정 기준을 깔끔하게 유지합니다.</p>
+                <p className="text-xs text-plum">팀을 만들고 스태프 배정을 합니다.</p>
               </div>
 
               <label className={compactEditorFieldWrapClass}>

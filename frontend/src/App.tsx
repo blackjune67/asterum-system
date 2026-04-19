@@ -98,18 +98,6 @@ export default function App() {
 
             <div className="grid gap-4">
               <RollingMoodboard />
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="dream-stat">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">WHO WE SERVE</p>
-                  <p className="mt-2 text-lg font-semibold">아티스트·기술팀·촬영팀</p>
-                  <p className="mt-1 text-sm text-plum">모든 구성원을 하나의 타임라인으로</p>
-                </div>
-                <div className="dream-stat">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">KEY FEATURES</p>
-                  <p className="mt-2 text-lg font-semibold">충돌감지 · 반복수정 · 실시간 알림</p>
-                  <p className="mt-1 text-sm text-plum">변화하는 현장 변수에 즉시 대응합니다</p>
-                </div>
-              </div>
             </div>
           </div>
         </header>
