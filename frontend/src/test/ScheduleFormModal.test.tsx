@@ -119,6 +119,26 @@ test('loads edit mode values from the selected item', () => {
   expect(screen.getByLabelText('리소스')).toHaveValue('3')
 })
 
+test('constrains the modal within the viewport and enables internal scrolling', () => {
+  render(
+    <ScheduleFormModal
+      open={true}
+      mode="create"
+      selectedDate="2026-04-20"
+      participants={[]}
+      teams={[]}
+      resources={[]}
+      onClose={() => {}}
+      onSubmit={async () => {}}
+    />,
+  )
+
+  const modal = screen.getByRole('heading', { name: '일정 등록' }).closest('.dream-modal')
+
+  expect(modal).toHaveClass('max-h-[calc(100dvh-2rem)]')
+  expect(modal).toHaveClass('overflow-y-auto')
+})
+
 test('separates member and staff participants in the form', () => {
   render(
     <ScheduleFormModal
@@ -142,8 +162,81 @@ test('separates member and staff participants in the form', () => {
 
   expect(within(memberSection).getByLabelText('예준')).toBeInTheDocument()
   expect(within(memberSection).getByLabelText('노아')).toBeInTheDocument()
+  expect(within(memberSection).getByLabelText('아티스트 전체 선택')).toBeInTheDocument()
   expect(within(memberSection).queryByLabelText('기술팀')).not.toBeInTheDocument()
 
   expect(within(staffSection).getByLabelText('기술팀')).toBeInTheDocument()
   expect(within(staffSection).queryByLabelText('예준')).not.toBeInTheDocument()
+})
+
+test('shows artist character images in color only when selected', async () => {
+  const user = userEvent.setup()
+
+  render(
+    <ScheduleFormModal
+      open={true}
+      mode="create"
+      selectedDate="2026-04-20"
+      participants={[
+        { id: 1, name: '예준', type: 'MEMBER' },
+        { id: 2, name: '은호', type: 'MEMBER' },
+      ]}
+      teams={[]}
+      resources={[]}
+      onClose={() => {}}
+      onSubmit={async () => {}}
+    />,
+  )
+
+  const memberSection = screen.getByRole('group', { name: '아티스트' })
+  const yeajunImage = within(memberSection).getByAltText('예준 캐릭터')
+
+  expect(yeajunImage).toHaveAttribute('src', '/03_yeajun.svg')
+  expect(yeajunImage).toHaveClass('grayscale')
+  expect(yeajunImage).not.toHaveClass('grayscale-0')
+
+  await user.click(within(memberSection).getByLabelText('예준'))
+
+  expect(yeajunImage).toHaveClass('grayscale-0')
+  expect(yeajunImage).toHaveClass('opacity-100')
+})
+
+test('toggles all artists with the select-all checkbox without affecting staff', async () => {
+  const user = userEvent.setup()
+
+  render(
+    <ScheduleFormModal
+      open={true}
+      mode="create"
+      selectedDate="2026-04-20"
+      participants={[
+        { id: 1, name: '예준', type: 'MEMBER' },
+        { id: 2, name: '노아', type: 'MEMBER' },
+        { id: 3, name: '기술팀', type: 'STAFF' },
+      ]}
+      teams={[]}
+      resources={[]}
+      onClose={() => {}}
+      onSubmit={async () => {}}
+    />,
+  )
+
+  const memberSection = screen.getByRole('group', { name: '아티스트' })
+  const selectAll = within(memberSection).getByLabelText('아티스트 전체 선택')
+  const yeajun = within(memberSection).getByLabelText('예준')
+  const noa = within(memberSection).getByLabelText('노아')
+  const staff = screen.getByRole('group', { name: '스태프' })
+  const staffCheckbox = within(staff).getByLabelText('기술팀')
+
+  await user.click(selectAll)
+
+  expect(yeajun).toBeChecked()
+  expect(noa).toBeChecked()
+  expect(staffCheckbox).not.toBeChecked()
+
+  await user.click(selectAll)
+
+  expect(yeajun).not.toBeChecked()
+  expect(noa).not.toBeChecked()
+  expect(staffCheckbox).not.toBeChecked()
 })

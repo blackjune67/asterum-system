@@ -135,7 +135,7 @@ export function ScheduleFormModal({
 
   return (
     <div className="dream-overlay fixed inset-0 z-30 flex items-center justify-center px-4">
-      <div className="dream-modal max-w-2xl">
+      <div className="dream-modal max-h-[calc(100dvh-2rem)] max-w-2xl overflow-y-auto">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">Liner Notes</p>
