@@ -91,6 +91,16 @@ export function ScheduleFormModal({
     setForm(buildInitialFormState(mode, selectedDate, initialItem))
   }, [open, mode, initialItem, selectedDate])
 
+  function handlePickerClick(event: React.MouseEvent<HTMLInputElement>) {
+    if (typeof event.currentTarget.showPicker !== 'function') return
+
+    try {
+      event.currentTarget.showPicker()
+    } catch {
+      // Some browsers reject programmatic picker opens even on valid clicks.
+    }
+  }
+
   if (!open) return null
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -166,6 +176,7 @@ export function ScheduleFormModal({
                 className="dream-field"
                 type="date"
                 value={form.date}
+                onClick={handlePickerClick}
                 onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))}
               />
             </label>
@@ -175,6 +186,7 @@ export function ScheduleFormModal({
                 className="dream-field"
                 type="time"
                 value={form.startTime}
+                onClick={handlePickerClick}
                 onChange={(event) => setForm((current) => ({ ...current, startTime: event.target.value }))}
               />
             </label>
@@ -184,6 +196,7 @@ export function ScheduleFormModal({
                 className="dream-field"
                 type="time"
                 value={form.endTime}
+                onClick={handlePickerClick}
                 onChange={(event) => setForm((current) => ({ ...current, endTime: event.target.value }))}
               />
             </label>
@@ -332,6 +345,7 @@ export function ScheduleFormModal({
                         className="dream-field"
                         type="date"
                         value={form.untilDate}
+                        onClick={handlePickerClick}
                         onChange={(event) =>
                           setForm((current) => ({
                             ...current,
