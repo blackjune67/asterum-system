@@ -33,7 +33,8 @@ public class SeedDataInitializer {
                     new Participant("카메라맨A", ParticipantType.STAFF),
                     new Participant("편집자B", ParticipantType.STAFF),
                     new Participant("디자이너C", ParticipantType.STAFF),
-                    new Participant("음향기사D", ParticipantType.STAFF)
+                    new Participant("음향기사D", ParticipantType.STAFF),
+                    new Participant("프로듀서E", ParticipantType.STAFF)
                 ));
 
                 Team visualTeam = new Team("영상팀");
@@ -45,6 +46,7 @@ public class SeedDataInitializer {
 
                 Team productionTeam = new Team("프로덕션팀");
                 productionTeam.addMember(new TeamMember(productionTeam, participants.get(8)));
+                productionTeam.addMember(new TeamMember(productionTeam, participants.get(9)));
 
                 teamRepository.saveAll(List.of(visualTeam, designTeam, productionTeam));
             }
