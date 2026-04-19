@@ -51,6 +51,7 @@ export function useCalendarState() {
   const monthQuery = useQuery({
     queryKey: calendarQueryKeys.month(currentYear, currentMonthNumber),
     queryFn: () => fetchSchedules(currentYear, currentMonthNumber),
+    placeholderData: (previousData) => previousData,
   })
   const weekMonthKeys = useMemo(
     () =>
@@ -164,7 +165,9 @@ export function useCalendarState() {
     : lookupError
       ? toErrorMessage(lookupError, 'Failed to load calendar lookups')
       : null
-  const loading = calendarView === 'week' ? monthQuery.isPending || weekMonthQueries.some((query) => query.isPending) : monthQuery.isPending
+  const loading = calendarView === 'week'
+    ? (monthQuery.isPending && monthQuery.data === undefined) || weekMonthQueries.some((query) => query.isPending)
+    : monthQuery.isPending && monthQuery.data === undefined
   const detailLoading = selectedItemId !== null && detailQuery.isPending
 
   async function invalidateMonthQueries() {
