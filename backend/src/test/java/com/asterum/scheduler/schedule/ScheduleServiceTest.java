@@ -511,6 +511,43 @@ class ScheduleServiceTest {
         assertThat(threeOccurrenceQueries).isLessThanOrEqualTo(4);
     }
 
+    @Test
+    void detailReadQueryCountCurrentlyGrowsWithMoreTeamLinksAndMembers() {
+        Long choreographyTeamId = teamIdByName("안무팀");
+        Long visualTeamId = teamIdByName("영상팀");
+        Long productionTeamId = teamIdByName("프로덕션팀");
+        Long resourceId = resourceIdByName("메인 스튜디오");
+
+        Long leanOccurrenceId = scheduleCommandService.create(new CreateScheduleRequest(
+            "단순 상세 조회 일정",
+            LocalDate.of(2026, 4, 15),
+            LocalTime.of(9, 0),
+            LocalTime.of(10, 0),
+            List.of(1L),
+            List.of(choreographyTeamId),
+            resourceId,
+            null
+        ).toCommand()).getId();
+
+        Long richOccurrenceId = scheduleCommandService.create(new CreateScheduleRequest(
+            "복합 상세 조회 일정",
+            LocalDate.of(2026, 4, 16),
+            LocalTime.of(11, 0),
+            LocalTime.of(12, 0),
+            List.of(1L),
+            List.of(choreographyTeamId, visualTeamId, productionTeamId),
+            resourceId,
+            null
+        ).toCommand()).getId();
+
+        long leanQueries = measureDetailReadQueryCount(leanOccurrenceId);
+        long richQueries = measureDetailReadQueryCount(richOccurrenceId);
+
+        assertThat(richQueries)
+            .as("detail read currently scales with linked teams/members, indicating an N+1 hotspot")
+            .isGreaterThan(leanQueries);
+    }
+
     private ScheduleResponse toResponse(com.asterum.scheduler.schedule.domain.ScheduleOccurrence occurrence) {
         return scheduleResponseAssembler.toResponse(occurrence);
     }
@@ -533,5 +570,35 @@ class ScheduleServiceTest {
         listMonth(year, month);
 
         return statistics.getPrepareStatementCount();
+    }
+
+    private long measureDetailReadQueryCount(Long occurrenceId) {
+        SessionFactory sessionFactory = entityManagerFactory.unwrap(SessionFactory.class);
+        Statistics statistics = sessionFactory.getStatistics();
+        statistics.setStatisticsEnabled(true);
+
+        entityManager.flush();
+        entityManager.clear();
+        statistics.clear();
+
+        toResponse(scheduleQueryService.get(occurrenceId));
+
+        return statistics.getPrepareStatementCount();
+    }
+
+    private Long teamIdByName(String name) {
+        return teamRepository.findAll().stream()
+            .filter(team -> team.getName().equals(name))
+            .map(Team::getId)
+            .findFirst()
+            .orElseThrow();
+    }
+
+    private Long resourceIdByName(String name) {
+        return resourceRepository.findAll().stream()
+            .filter(resource -> resource.getName().equals(name))
+            .map(resource -> resource.getId())
+            .findFirst()
+            .orElseThrow();
     }
 }
