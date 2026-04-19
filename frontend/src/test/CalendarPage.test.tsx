@@ -261,8 +261,9 @@ describe('CalendarPage', () => {
     })
 
     expect(await screen.findByText('Recurring Schedule')).toBeInTheDocument()
-    expect(screen.getByText('리소스: 회의실 A')).toBeInTheDocument()
-    expect(screen.getByText('비주얼팀 (1명)')).toBeInTheDocument()
+    expect(screen.getByText('회의실 A (ROOM)')).toBeInTheDocument()
+    expect(screen.getByText('비주얼팀')).toBeInTheDocument()
+    expect(screen.getByText('1명 참여')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '반복 일정 전환' })).not.toBeInTheDocument()
   })
 })

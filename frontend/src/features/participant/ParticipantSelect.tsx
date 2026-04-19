@@ -1,15 +1,8 @@
 import type { Participant } from '../../types/participant'
 import type { ParticipantType } from '../../types/participant'
+import { getParticipantCharacterImage } from './participantVisuals'
 
 type ParticipantSelectionUpdate = number[] | ((currentIds: number[]) => number[])
-
-const participantCharacterImages: Record<string, string> = {
-  노아: '/01_noa.svg',
-  은호: '/02_eunho.svg',
-  예준: '/03_yeajun.svg',
-  밤비: '/04_bambi.svg',
-  하민: '/05_hamin.svg',
-}
 
 const participantSections: Array<{ label: string; type: ParticipantType }> = [
   { label: '아티스트', type: 'MEMBER' },
@@ -60,7 +53,7 @@ export function ParticipantSelect({ participants, selectedIds, onChange }: Props
             <div className="grid gap-2 sm:grid-cols-2">
               {sectionParticipants.map((participant) => {
                 const checked = selectedIds.includes(participant.id)
-                const characterImage = participantCharacterImages[participant.name]
+                const characterImage = getParticipantCharacterImage(participant.name)
                 return (
                   <label
                     key={participant.id}

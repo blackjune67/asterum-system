@@ -14,12 +14,11 @@ export default function App() {
           <div className="relative z-10 grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div>
               <div className="dream-badge text-accent">
-                <span>PLAYBOOK EDITION</span>
+                <span>PLAVE와 함께 테라의 팬들과 소통을 원활하게!</span>
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                <span>Soft Album Dream</span>
               </div>
               <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-tight text-ink sm:text-5xl">
-                우리만의 드리미 스케줄 아카이브
+                아스테룸 통합 스케줄러
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-plum sm:text-base">
                 컴백 티저 보드 같은 무드 안에서 촬영 일정, 반복 스케줄, 참여자 구성을 한 번에 정리합니다.
