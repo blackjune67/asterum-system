@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ParticipantSelect } from '../participant/ParticipantSelect'
 import type { Participant } from '../../types/participant'
 import { TeamSelect } from '../team/TeamSelect'
@@ -68,6 +68,22 @@ function getCountOptions() {
   })
 }
 
+function getDerivedParticipantIds(teamIds: number[], teams: Team[]) {
+  return Array.from(
+    new Set(
+      teams
+        .filter((team) => teamIds.includes(team.id))
+        .flatMap((team) => team.memberIds),
+    ),
+  )
+}
+
+function removeDerivedParticipantIds(participantIds: number[], teamIds: number[], teams: Team[]) {
+  const derivedIds = getDerivedParticipantIds(teamIds, teams)
+  if (derivedIds.length === 0) return participantIds
+  return participantIds.filter((participantId) => !derivedIds.includes(participantId))
+}
+
 function buildInitialFormState(mode: Props['mode'], selectedDate: string, initialItem?: ScheduleItem | null): FormState {
   if (mode === 'edit' && initialItem) {
     return {
@@ -75,7 +91,7 @@ function buildInitialFormState(mode: Props['mode'], selectedDate: string, initia
       date: initialItem.date,
       startTime: normalizeTime(initialItem.startTime),
       endTime: normalizeTime(initialItem.endTime),
-      participantIds: initialItem.participantIds,
+      participantIds: removeDerivedParticipantIds(initialItem.participantIds, initialItem.teamIds, initialItem.teams),
       teamIds: initialItem.teamIds,
       resourceId: initialItem.resource?.id ?? null,
       recurring: initialItem.isRecurring,
@@ -119,6 +135,7 @@ export function ScheduleFormModal({
   const [form, setForm] = useState(() => buildInitialFormState(mode, selectedDate, initialItem))
   const repeatOptions = getRepeatOptions(form.recurrenceType)
   const countOptions = getCountOptions()
+  const teamDerivedParticipantIds = useMemo(() => getDerivedParticipantIds(form.teamIds, teams), [form.teamIds, teams])
 
   useEffect(() => {
     if (!open) return
@@ -241,6 +258,7 @@ export function ScheduleFormModal({
             <ParticipantSelect
               participants={participants}
               selectedIds={form.participantIds}
+              lockedIds={teamDerivedParticipantIds}
               onChange={(participantIds) =>
                 setForm((current) => ({
                   ...current,
@@ -257,10 +275,14 @@ export function ScheduleFormModal({
               teams={teams}
               selectedIds={form.teamIds}
               onChange={(teamIds) =>
-                setForm((current) => ({
-                  ...current,
-                  teamIds: typeof teamIds === 'function' ? teamIds(current.teamIds) : teamIds,
-                }))
+                setForm((current) => {
+                  const nextTeamIds = typeof teamIds === 'function' ? teamIds(current.teamIds) : teamIds
+                  return {
+                    ...current,
+                    teamIds: nextTeamIds,
+                    participantIds: removeDerivedParticipantIds(current.participantIds, nextTeamIds, teams),
+                  }
+                })
               }
             />
           </div>

@@ -1,7 +1,16 @@
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import type { ScheduleItem } from '../../types/schedule'
 import { normalizeTime } from '../schedule/dateUtils'
+import { measureMonthGridTitleLayout } from './monthGridTextLayout'
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+const MULTILINE_CLAMP_STYLE: CSSProperties = {
+  display: '-webkit-box',
+  overflow: 'hidden',
+  WebkitBoxOrient: 'vertical',
+  WebkitLineClamp: 2,
+}
 
 interface Props {
   month: Date
@@ -67,25 +76,81 @@ export function MonthGrid({ month, itemsByDate, onSelectDate, onSelectItem }: Pr
             </div>
             <div className="mt-3 grid gap-2">
               {dayItems.map((item, index) => (
-                <button
+                <MonthGridScheduleChip
                   key={item.id}
-                  className={`rounded-[1.2rem] bg-gradient-to-r ${itemToneClasses[index % itemToneClasses.length]} px-3 py-2 text-left text-xs text-white shadow-md transition hover:brightness-105`}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onSelectItem(item)
-                  }}
-                  type="button"
-                >
-                  <p className="font-semibold tracking-[0.02em]">{item.title}</p>
-                  <p className="mt-1 text-[11px] text-white/85">
-                    {normalizeTime(item.startTime)} - {normalizeTime(item.endTime)}
-                  </p>
-                </button>
+                  item={item}
+                  toneClass={itemToneClasses[index % itemToneClasses.length]}
+                  onSelectItem={onSelectItem}
+                />
               ))}
             </div>
           </div>
         )
       })}
     </div>
+  )
+}
+
+interface MonthGridScheduleChipProps {
+  item: ScheduleItem
+  toneClass: string
+  onSelectItem: (item: ScheduleItem) => void
+}
+
+function MonthGridScheduleChip({ item, toneClass, onSelectItem }: MonthGridScheduleChipProps) {
+  const titleRef = useRef<HTMLParagraphElement | null>(null)
+  const [titleWidth, setTitleWidth] = useState(0)
+
+  useLayoutEffect(() => {
+    const node = titleRef.current
+    if (!node) return
+
+    const updateWidth = (nextWidth?: number) => {
+      const measuredWidth = nextWidth ?? node.getBoundingClientRect().width
+      setTitleWidth((current) => {
+        const normalizedWidth = Math.max(Math.floor(measuredWidth), 0)
+        return current === normalizedWidth ? current : normalizedWidth
+      })
+    }
+
+    updateWidth()
+
+    if (typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver((entries) => {
+      updateWidth(entries[0]?.contentRect.width)
+    })
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
+  const titleLayout = useMemo(() => measureMonthGridTitleLayout(item.title, titleWidth), [item.title, titleWidth])
+
+  return (
+    <button
+      className={`rounded-[1.2rem] bg-gradient-to-r ${toneClass} px-3 py-2 text-left text-xs text-white shadow-md transition hover:brightness-105`}
+      onClick={(event) => {
+        event.stopPropagation()
+        onSelectItem(item)
+      }}
+      title={titleLayout.truncated ? item.title : undefined}
+      type="button"
+    >
+      <p
+        ref={titleRef}
+        className="w-full text-xs font-semibold leading-[18px] tracking-[0.02em]"
+        data-title-lines={titleLayout.visibleLineCount}
+        style={{
+          ...MULTILINE_CLAMP_STYLE,
+          minHeight: `${titleLayout.titleHeight}px`,
+        }}
+      >
+        {item.title}
+      </p>
+      <p className="mt-1 text-[11px] text-white/85">
+        {normalizeTime(item.startTime)} - {normalizeTime(item.endTime)}
+      </p>
+    </button>
   )
 }

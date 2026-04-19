@@ -12,16 +12,19 @@ const participantSections: Array<{ label: string; type: ParticipantType }> = [
 interface Props {
   participants: Participant[]
   selectedIds: number[]
+  lockedIds?: number[]
   onChange: (update: ParticipantSelectionUpdate) => void
 }
 
-export function ParticipantSelect({ participants, selectedIds, onChange }: Props) {
+export function ParticipantSelect({ participants, selectedIds, lockedIds = [], onChange }: Props) {
+  const effectiveSelectedIds = Array.from(new Set([...selectedIds, ...lockedIds]))
+
   return (
     <div className="grid gap-4">
       {participantSections.map((section) => {
         const sectionParticipants = participants.filter((participant) => participant.type === section.type)
         const selectableIds = sectionParticipants.map((participant) => participant.id)
-        const allChecked = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.includes(id))
+        const allChecked = selectableIds.length > 0 && selectableIds.every((id) => effectiveSelectedIds.includes(id))
 
         if (sectionParticipants.length === 0) {
           return null
@@ -43,7 +46,7 @@ export function ParticipantSelect({ participants, selectedIds, onChange }: Props
                       if (nextChecked) {
                         return Array.from(new Set([...currentIds, ...selectableIds]))
                       }
-                      return currentIds.filter((id) => !selectableIds.includes(id))
+                      return currentIds.filter((id) => !selectableIds.includes(id) || lockedIds.includes(id))
                     })
                   }}
                 />
@@ -52,18 +55,20 @@ export function ParticipantSelect({ participants, selectedIds, onChange }: Props
             )}
             <div className="grid gap-2 sm:grid-cols-2">
               {sectionParticipants.map((participant) => {
-                const checked = selectedIds.includes(participant.id)
+                const checked = effectiveSelectedIds.includes(participant.id)
+                const locked = lockedIds.includes(participant.id)
                 const characterImage = getParticipantCharacterImage(participant.name)
                 return (
                   <label
                     key={participant.id}
-                    className="dream-card flex cursor-pointer items-center gap-3 px-4 py-3 text-sm"
+                    className={`dream-card flex items-center gap-3 px-4 py-3 text-sm ${locked ? 'cursor-default' : 'cursor-pointer'}`}
                   >
                     <input
                       aria-label={participant.name}
                       className="h-4 w-4 accent-accent"
                       type="checkbox"
                       checked={checked}
+                      disabled={locked}
                       onChange={() => {
                         onChange((currentIds) =>
                           currentIds.includes(participant.id)
@@ -85,6 +90,9 @@ export function ParticipantSelect({ participants, selectedIds, onChange }: Props
                       <span className="text-plum">{participant.name}</span>
                       {participant.type === 'STAFF' && participant.teamName && (
                         <span className="text-xs text-plum/70">{participant.teamName}</span>
+                      )}
+                      {locked && (
+                        <span className="text-[11px] font-medium text-accent/80">팀 선택으로 포함됨</span>
                       )}
                     </div>
                   </label>
