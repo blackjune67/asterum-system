@@ -1,4 +1,4 @@
-import { startTransition, useMemo, useState } from 'react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
 import { MonthGrid } from './MonthGrid'
 import { useCalendarState } from './useCalendarState'
 import { useCalendarUiStore } from './calendarUiStore'
@@ -52,6 +52,7 @@ export function CalendarPage() {
   const openConvert = useCalendarUiStore((state) => state.openConvert)
   const closeConvert = useCalendarUiStore((state) => state.closeConvert)
   const closeScope = useCalendarUiStore((state) => state.closeScope)
+  const modalOpen = managementOpen || formOpen || detailOpen || convertOpen || scopeOpen
 
   const itemsByDate = useMemo(() => {
     const groupedItems = new Map<string, typeof items>()
@@ -74,6 +75,21 @@ export function CalendarPage() {
     { label: '반복 일정', value: recurringCount, description: '반복 일정' },
     { label: '단일 일정', value: singleCount, description: '단일 일정' },
   ]
+
+  useEffect(() => {
+    if (!modalOpen) return
+
+    const previousBodyOverflow = document.body.style.overflow
+    const previousHtmlOverflow = document.documentElement.style.overflow
+
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.overflow = previousHtmlOverflow
+    }
+  }, [modalOpen])
 
   return (
     <>
