@@ -17,18 +17,52 @@ interface FormState {
   count: number
 }
 
+const REPEAT_LABELS: Record<RecurrenceType, string> = {
+  DAILY: '일',
+  WEEKLY: '주',
+  MONTHLY: '개월',
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (Number.isNaN(value)) return min
+  return Math.min(Math.max(value, min), max)
+}
+
+function getRepeatOptions(type: RecurrenceType) {
+  const unit = REPEAT_LABELS[type]
+  return Array.from({ length: 99 }, (_, index) => {
+    const value = index + 1
+    return {
+      value,
+      label: `${value}${unit}`,
+    }
+  })
+}
+
+function getCountOptions() {
+  return Array.from({ length: 10 }, (_, index) => {
+    const value = index + 1
+    return {
+      value,
+      label: `${value}회`,
+    }
+  })
+}
+
 function buildInitialFormState(item: ScheduleItem | null): FormState {
   return {
-    recurrenceType: item?.recurrence?.type ?? 'WEEKLY',
-    interval: item?.recurrence?.interval ?? 1,
+    recurrenceType: item?.recurrence?.type ?? 'DAILY',
+    interval: clampNumber(item?.recurrence?.interval ?? 1, 1, 99),
     endType: item?.recurrence?.endType ?? 'COUNT',
     untilDate: item?.recurrence?.untilDate ?? item?.date ?? '',
-    count: item?.recurrence?.count ?? 8,
+    count: clampNumber(item?.recurrence?.count ?? 8, 1, 10),
   }
 }
 
 export function ScheduleConvertModal({ open, item, error, onClose, onSubmit }: Props) {
   const [form, setForm] = useState(() => buildInitialFormState(item))
+  const repeatOptions = getRepeatOptions(form.recurrenceType)
+  const countOptions = getCountOptions()
 
   useEffect(() => {
     if (!open) return
@@ -60,7 +94,11 @@ export function ScheduleConvertModal({ open, item, error, onClose, onSubmit }: P
               `{item.title}` 일정을 기준으로 새 반복 시리즈를 생성합니다.
             </p>
           </div>
-          <button className="dream-button-secondary px-4 py-2 text-sm" onClick={onClose}>
+          <button
+            className="dream-button-secondary inline-flex min-w-[72px] shrink-0 items-center justify-center whitespace-nowrap rounded-xl px-4 py-2 text-sm"
+            onClick={onClose}
+            type="button"
+          >
             닫기
           </button>
         </div>
@@ -87,19 +125,23 @@ export function ScheduleConvertModal({ open, item, error, onClose, onSubmit }: P
           </label>
 
           <label className="grid gap-2">
-            <span className="text-sm font-medium text-plum">간격</span>
-            <input
+            <span className="text-sm font-medium text-plum">반복</span>
+            <select
               className="dream-field"
-              min={1}
-              type="number"
-              value={form.interval}
+              value={String(form.interval)}
               onChange={(event) =>
                 setForm((current) => ({
                   ...current,
                   interval: Number(event.target.value),
                 }))
               }
-            />
+            >
+              {repeatOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="grid gap-2">
@@ -123,18 +165,22 @@ export function ScheduleConvertModal({ open, item, error, onClose, onSubmit }: P
           {form.endType === 'COUNT' && (
             <label className="grid gap-2">
               <span className="text-sm font-medium text-plum">반복 횟수</span>
-              <input
+              <select
                 className="dream-field"
-                min={1}
-                type="number"
-                value={form.count}
+                value={String(form.count)}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
                     count: Number(event.target.value),
                   }))
                 }
-              />
+              >
+                {countOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
           )}
 

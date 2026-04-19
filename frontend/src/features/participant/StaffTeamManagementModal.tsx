@@ -36,6 +36,12 @@ function createEmptyTeamForm() {
   }
 }
 
+const modalActionPrimaryClass =
+  'inline-flex flex-1 min-h-7 items-center justify-center rounded-md border border-accent/25 bg-accent px-3 py-1 text-[11px] font-semibold text-white transition hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent/30'
+
+const modalActionSecondaryClass =
+  'inline-flex flex-1 min-h-7 items-center justify-center rounded-md border border-[#e8d7e4] bg-[#fff8fc] px-3 py-1 text-[11px] font-semibold text-plum transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20'
+
 export function StaffTeamManagementModal({
   open,
   participants,
@@ -64,6 +70,7 @@ export function StaffTeamManagementModal({
   if (!open) return null
 
   const staffParticipants = participants.filter((participant) => participant.type === 'STAFF')
+  const isStaffTab = activeTab === 'staff'
 
   async function handleStaffSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -133,20 +140,25 @@ export function StaffTeamManagementModal({
 
   return (
     <div className="dream-overlay fixed inset-0 z-30 flex items-center justify-center px-4">
-      <div className="dream-modal max-h-[calc(100dvh-2rem)] max-w-3xl overflow-y-auto">
+      <div className="dream-modal max-h-[calc(100dvh-2rem)] max-w-4xl overflow-y-auto">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">Roster Control</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-accent">Roster Notes</p>
             <h3 className="mt-2 text-2xl font-semibold text-ink">참가자/팀 관리</h3>
+            <p className="mt-2 text-sm text-plum">현장 운영에 필요한 개인 스태프와 팀 구성을 한 곳에서 정리합니다.</p>
           </div>
-          <button className="dream-button-secondary px-4 py-2 text-sm" onClick={onClose}>
+          <button className="dream-button-secondary px-4 py-2 text-sm" onClick={onClose} type="button">
             닫기
           </button>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
+        <div className="dream-card mt-6 grid gap-3 p-3 sm:grid-cols-2">
           <button
-            className={activeTab === 'staff' ? 'dream-button-primary' : 'dream-button-secondary'}
+            className={
+              isStaffTab
+                ? 'dream-button-primary w-full justify-center'
+                : 'dream-button-secondary w-full justify-center'
+            }
             onClick={() => {
               setActiveTab('staff')
               setError(null)
@@ -156,7 +168,11 @@ export function StaffTeamManagementModal({
             개인 스태프 관리
           </button>
           <button
-            className={activeTab === 'team' ? 'dream-button-primary' : 'dream-button-secondary'}
+            className={
+              isStaffTab
+                ? 'dream-button-secondary w-full justify-center'
+                : 'dream-button-primary w-full justify-center'
+            }
             onClick={() => {
               setActiveTab('team')
               setError(null)
@@ -169,9 +185,15 @@ export function StaffTeamManagementModal({
 
         {error && <p className="dream-card mt-5 px-4 py-3 text-sm text-rose-700">{error}</p>}
 
-        {activeTab === 'staff' ? (
+        {isStaffTab ? (
           <div className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-            <form className="grid gap-4" onSubmit={handleStaffSubmit}>
+            <form className="dream-card grid gap-4 p-5" onSubmit={handleStaffSubmit}>
+              <div className="grid gap-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Editor</p>
+                <h4 className="text-lg font-semibold text-ink">개인 스태프 편집</h4>
+                <p className="text-sm text-plum">이름과 소속 팀을 정리해 일정 등록 화면에서 바로 선택할 수 있게 합니다.</p>
+              </div>
+
               <label className="grid gap-2">
                 <span className="text-sm font-medium text-plum">개인 스태프 이름</span>
                 <input
@@ -200,13 +222,13 @@ export function StaffTeamManagementModal({
                 </select>
               </label>
 
-              <div className="flex flex-wrap gap-2">
-                <button className="dream-button-primary" type="submit">
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button className={modalActionPrimaryClass} type="submit">
                   {staffForm.editingId === null ? '개인 스태프 등록' : '개인 스태프 수정'}
                 </button>
                 {staffForm.editingId !== null && (
                   <button
-                    className="dream-button-secondary"
+                    className={modalActionSecondaryClass}
                     onClick={() => setStaffForm(createEmptyStaffForm())}
                     type="button"
                   >
@@ -216,12 +238,17 @@ export function StaffTeamManagementModal({
               </div>
             </form>
 
-            <div className="grid gap-3">
+            <div className="dream-card grid gap-3 p-5">
+              <div className="grid gap-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Roster</p>
+                <h4 className="text-lg font-semibold text-ink">등록된 개인 스태프</h4>
+                <p className="text-sm text-plum">수정 또는 삭제할 대상을 선택해 현재 로스터를 빠르게 정리합니다.</p>
+              </div>
               {staffParticipants.length === 0 ? (
                 <div className="dream-field flex min-h-[52px] items-center">등록된 개인 스태프가 없습니다</div>
               ) : (
                 staffParticipants.map((participant) => (
-                  <div key={participant.id} className="dream-card grid gap-3 px-4 py-3">
+                  <div key={participant.id} className="dream-field grid gap-3 px-4 py-4">
                     <div className="grid gap-1">
                       <span className="font-medium text-ink">{participant.name}</span>
                       <span className="text-xs text-plum">{participant.teamName ?? '소속 팀 없음'}</span>
@@ -255,7 +282,13 @@ export function StaffTeamManagementModal({
           </div>
         ) : (
           <div className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-            <form className="grid gap-4" onSubmit={handleTeamSubmit}>
+            <form className="dream-card grid gap-4 p-5" onSubmit={handleTeamSubmit}>
+              <div className="grid gap-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Editor</p>
+                <h4 className="text-lg font-semibold text-ink">팀 편집</h4>
+                <p className="text-sm text-plum">현장 성격에 맞는 팀 구성을 만들고, 스태프 배정 기준을 깔끔하게 유지합니다.</p>
+              </div>
+
               <label className="grid gap-2">
                 <span className="text-sm font-medium text-plum">팀 이름</span>
                 <input
@@ -267,13 +300,13 @@ export function StaffTeamManagementModal({
                 />
               </label>
 
-              <div className="flex flex-wrap gap-2">
-                <button className="dream-button-primary" type="submit">
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button className={modalActionPrimaryClass} type="submit">
                   {teamForm.editingId === null ? '팀 등록' : '팀 수정'}
                 </button>
                 {teamForm.editingId !== null && (
                   <button
-                    className="dream-button-secondary"
+                    className={modalActionSecondaryClass}
                     onClick={() => setTeamForm(createEmptyTeamForm())}
                     type="button"
                   >
@@ -283,12 +316,17 @@ export function StaffTeamManagementModal({
               </div>
             </form>
 
-            <div className="grid gap-3">
+            <div className="dream-card grid gap-3 p-5">
+              <div className="grid gap-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Roster</p>
+                <h4 className="text-lg font-semibold text-ink">등록된 팀</h4>
+                <p className="text-sm text-plum">현재 운영 중인 팀을 확인하고 바로 수정하거나 삭제할 수 있습니다.</p>
+              </div>
               {teams.length === 0 ? (
                 <div className="dream-field flex min-h-[52px] items-center">등록된 팀이 없습니다</div>
               ) : (
                 teams.map((team) => (
-                  <div key={team.id} className="dream-card grid gap-3 px-4 py-3">
+                  <div key={team.id} className="dream-field grid gap-3 px-4 py-4">
                     <div className="grid gap-1">
                       <span className="font-medium text-ink">{team.name}</span>
                       <span className="text-xs text-plum">{team.members.length}명 소속</span>
