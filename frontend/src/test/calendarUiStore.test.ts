@@ -19,6 +19,7 @@ describe('calendarUiStore', () => {
     expect(state.currentMonth.getMonth()).toBe(3)
     expect(state.currentMonth.getDate()).toBe(1)
     expect(state.selectedDate).toBe('2026-04-19')
+    expect(state.calendarView).toBe('month')
     expect(state.detailOpen).toBe(false)
     expect(state.formOpen).toBe(false)
     expect(state.convertOpen).toBe(false)
@@ -78,5 +79,16 @@ describe('calendarUiStore', () => {
 
     expect(store.getState().scopeOpen).toBe(false)
     expect(store.getState().pendingUpdate).toBeNull()
+  })
+
+  test('setSelectedDate keeps the selected day and synchronizes the visible month', () => {
+    const store = createCalendarUiStore()
+
+    store.getState().setSelectedDate('2026-05-01')
+
+    expect(store.getState().selectedDate).toBe('2026-05-01')
+    expect(store.getState().currentMonth.getFullYear()).toBe(2026)
+    expect(store.getState().currentMonth.getMonth()).toBe(4)
+    expect(store.getState().currentMonth.getDate()).toBe(1)
   })
 })

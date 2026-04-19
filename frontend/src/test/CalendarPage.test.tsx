@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CalendarPage } from '../features/calendar/CalendarPage'
+import { calendarUiStore } from '../features/calendar/calendarUiStore'
 import { renderWithQueryClient } from './queryClient'
 
 const fetchMock = vi.fn()
@@ -354,5 +355,71 @@ describe('CalendarPage', () => {
     const staffSection = screen.getByRole('group', { name: '스태프' })
     expect(await within(staffSection).findByLabelText('카메라맨A')).toBeInTheDocument()
     expect(within(staffSection).getByText('영상팀')).toBeInTheDocument()
+  })
+
+  test('switches to the weekly timeline view and opens detail from a timeline block', async () => {
+    const user = userEvent.setup()
+
+    const item = createScheduleItem({
+      title: 'Studio shoot',
+      date: '2026-04-15',
+      resource: createResource(3, '스튜디오 A', 'STUDIO'),
+    })
+
+    calendarUiStore.setState({
+      currentMonth: new Date(2026, 3, 1),
+      selectedDate: '2026-04-15',
+    })
+
+    fetchMock.mockResolvedValueOnce(createJsonResponse([item]))
+    mockInitialLookups()
+    fetchMock.mockResolvedValueOnce(createJsonResponse(item))
+
+    renderWithQueryClient(<CalendarPage />)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
+    await user.click(screen.getByRole('button', { name: '주간' }))
+
+    expect(await screen.findByText('스튜디오 A')).toBeInTheDocument()
+    expect(screen.getByTestId('week-timeline-scroll')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Studio shoot 2026-04-15/ }))
+
+    expect(await screen.findByRole('heading', { name: 'Studio shoot' })).toBeInTheDocument()
+  })
+
+  test('fetches an adjacent month when the weekly range crosses a month boundary', async () => {
+    const user = userEvent.setup()
+
+    calendarUiStore.setState({
+      currentMonth: new Date(2026, 3, 1),
+      selectedDate: '2026-04-01',
+    })
+
+    fetchMock.mockResolvedValueOnce(createJsonResponse([createScheduleItem({ date: '2026-04-01' })]))
+    mockInitialLookups()
+    fetchMock.mockResolvedValueOnce(
+      createJsonResponse([
+        createScheduleItem({
+          id: 8,
+          title: 'March carry-over',
+          date: '2026-03-30',
+          startTime: '08:00:00',
+          endTime: '09:00:00',
+          resource: createResource(4, '스튜디오 B', 'STUDIO'),
+        }),
+      ]),
+    )
+
+    renderWithQueryClient(<CalendarPage />)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
+    await user.click(screen.getByRole('button', { name: '주간' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/schedules?year=2026&month=3')
+    })
+    expect(await screen.findByText('스튜디오 B')).toBeInTheDocument()
+    expect(screen.getByText('March carry-over')).toBeInTheDocument()
   })
 })
