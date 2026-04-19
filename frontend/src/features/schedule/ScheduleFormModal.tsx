@@ -36,6 +36,28 @@ interface FormState {
   count: number
 }
 
+const REPEAT_LABELS: Record<RecurrenceType, string> = {
+  DAILY: '일',
+  WEEKLY: '주',
+  MONTHLY: '개월',
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (Number.isNaN(value)) return min
+  return Math.min(Math.max(value, min), max)
+}
+
+function getRepeatOptions(type: RecurrenceType) {
+  const unit = REPEAT_LABELS[type]
+  return Array.from({ length: 99 }, (_, index) => {
+    const value = index + 1
+    return {
+      value,
+      label: `${value}${unit}`,
+    }
+  })
+}
+
 function buildInitialFormState(mode: Props['mode'], selectedDate: string, initialItem?: ScheduleItem | null): FormState {
   if (mode === 'edit' && initialItem) {
     return {
@@ -47,11 +69,11 @@ function buildInitialFormState(mode: Props['mode'], selectedDate: string, initia
       teamIds: initialItem.teamIds,
       resourceId: initialItem.resource?.id ?? null,
       recurring: initialItem.isRecurring,
-      recurrenceType: initialItem.recurrence?.type ?? 'WEEKLY',
-      interval: initialItem.recurrence?.interval ?? 1,
+      recurrenceType: initialItem.recurrence?.type ?? 'DAILY',
+      interval: clampNumber(initialItem.recurrence?.interval ?? 1, 1, 99),
       endType: initialItem.recurrence?.endType ?? 'COUNT',
       untilDate: initialItem.recurrence?.untilDate ?? initialItem.date,
-      count: initialItem.recurrence?.count ?? 8,
+      count: clampNumber(initialItem.recurrence?.count ?? 8, 1, 50),
     }
   }
 
@@ -64,7 +86,7 @@ function buildInitialFormState(mode: Props['mode'], selectedDate: string, initia
     teamIds: [],
     resourceId: null,
     recurring: false,
-    recurrenceType: 'WEEKLY',
+    recurrenceType: 'DAILY',
     interval: 1,
     endType: 'COUNT',
     untilDate: selectedDate,
@@ -85,6 +107,7 @@ export function ScheduleFormModal({
   onSubmit,
 }: Props) {
   const [form, setForm] = useState(() => buildInitialFormState(mode, selectedDate, initialItem))
+  const repeatOptions = getRepeatOptions(form.recurrenceType)
 
   useEffect(() => {
     if (!open) return
@@ -290,19 +313,23 @@ export function ScheduleFormModal({
                     </select>
                   </label>
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium text-plum">간격</span>
-                    <input
+                    <span className="text-sm font-medium text-plum">반복</span>
+                    <select
                       className="dream-field"
-                      min={1}
-                      type="number"
-                      value={form.interval}
+                      value={String(form.interval)}
                       onChange={(event) =>
                         setForm((current) => ({
                           ...current,
                           interval: Number(event.target.value),
                         }))
                       }
-                    />
+                    >
+                      {repeatOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                   <label className="grid gap-2">
                     <span className="text-sm font-medium text-plum">종료 조건</span>
@@ -326,13 +353,14 @@ export function ScheduleFormModal({
                       <span className="text-sm font-medium text-plum">반복 횟수</span>
                       <input
                         className="dream-field"
+                        max={50}
                         min={1}
                         type="number"
                         value={form.count}
                         onChange={(event) =>
                           setForm((current) => ({
                             ...current,
-                            count: Number(event.target.value),
+                            count: clampNumber(Number(event.target.value), 1, 50),
                           }))
                         }
                       />

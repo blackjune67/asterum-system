@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 import { ScheduleFormModal } from '../features/schedule/ScheduleFormModal'
 import type { ScheduleItem } from '../types/schedule'
 import { within } from '@testing-library/react'
@@ -24,6 +25,78 @@ test('shows recurrence fields when recurring is enabled', async () => {
 
   expect(screen.getByText('반복 유형')).toBeInTheDocument()
   expect(screen.getByText('종료 조건')).toBeInTheDocument()
+})
+
+test('defaults recurrence type to daily and updates repeat options per type', async () => {
+  const user = userEvent.setup()
+
+  render(
+    <ScheduleFormModal
+      open={true}
+      mode="create"
+      selectedDate="2026-04-20"
+      participants={[]}
+      teams={[]}
+      resources={[]}
+      onClose={() => {}}
+      onSubmit={async () => {}}
+    />,
+  )
+
+  await user.click(screen.getByLabelText('반복 일정'))
+
+  expect(screen.getByLabelText('반복 유형')).toHaveValue('DAILY')
+  expect(screen.getByLabelText('반복')).toHaveValue('1')
+  expect(screen.getByRole('option', { name: '1일' })).toBeInTheDocument()
+  expect(screen.getByRole('option', { name: '99일' })).toBeInTheDocument()
+
+  await user.selectOptions(screen.getByLabelText('반복 유형'), 'WEEKLY')
+
+  expect(screen.getByRole('option', { name: '1주' })).toBeInTheDocument()
+  expect(screen.getByRole('option', { name: '99주' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: '1일' })).not.toBeInTheDocument()
+
+  await user.selectOptions(screen.getByLabelText('반복 유형'), 'MONTHLY')
+
+  expect(screen.getByRole('option', { name: '1개월' })).toBeInTheDocument()
+  expect(screen.getByRole('option', { name: '99개월' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: '1주' })).not.toBeInTheDocument()
+})
+
+test('caps recurring count at 50', async () => {
+  const user = userEvent.setup()
+  const onSubmit = vi.fn().mockResolvedValue(undefined)
+
+  render(
+    <ScheduleFormModal
+      open={true}
+      mode="create"
+      selectedDate="2026-04-20"
+      participants={[]}
+      teams={[]}
+      resources={[]}
+      onClose={() => {}}
+      onSubmit={onSubmit}
+    />,
+  )
+
+  await user.type(screen.getByLabelText('제목'), '반복 일정 테스트')
+  await user.click(screen.getByLabelText('반복 일정'))
+  await user.clear(screen.getByLabelText('반복 횟수'))
+  await user.type(screen.getByLabelText('반복 횟수'), '99')
+
+  expect(screen.getByLabelText('반복 횟수')).toHaveAttribute('max', '50')
+  expect(screen.getByLabelText('반복 횟수')).toHaveValue(50)
+
+  await user.click(screen.getByRole('button', { name: '저장' }))
+
+  expect(onSubmit).toHaveBeenCalledWith(
+    expect.objectContaining({
+      recurrence: expect.objectContaining({
+        count: 50,
+      }),
+    }),
+  )
 })
 
 test('resets create form fields when reopened with a new selected date', async () => {
