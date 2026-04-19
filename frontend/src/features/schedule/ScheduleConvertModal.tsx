@@ -34,7 +34,7 @@ function getRepeatOptions(type: RecurrenceType) {
     const value = index + 1
     return {
       value,
-      label: `${value}${unit}`,
+      label: `${value}${unit}마다`,
     }
   })
 }
@@ -125,7 +125,7 @@ export function ScheduleConvertModal({ open, item, error, onClose, onSubmit }: P
           </label>
 
           <label className="grid gap-2">
-            <span className="text-sm font-medium text-plum">반복</span>
+            <span className="text-sm font-medium text-plum">반복 간격</span>
             <select
               className="dream-field"
               value={String(form.interval)}
