@@ -69,6 +69,11 @@ export function CalendarPage() {
   const singleCount = items.length - recurringCount
   const currentYear = currentMonth.getFullYear()
   const currentMonthNumber = currentMonth.getMonth() + 1
+  const summaryStats = [
+    { label: '전체 일정', value: items.length, description: '이번달 전체 일정' },
+    { label: '반복 일정', value: recurringCount, description: '반복 일정' },
+    { label: '단일 일정', value: singleCount, description: '단일 일정' },
+  ]
 
   return (
     <>
@@ -76,29 +81,20 @@ export function CalendarPage() {
         <div className="relative z-10">
           <div className="grid gap-6 xl:grid-cols-[1fr_auto] xl:items-start">
             <div className="grid gap-5">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.34em] text-accent">Comeback Board</p>
-                  <h2 className="mt-3 text-3xl font-bold text-ink sm:text-4xl">{monthLabel(currentMonth)}</h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-plum sm:text-base">
-                    월간 스케줄을 포토북처럼 펼쳐 보고, 일회성 일정과 반복 시리즈를 같은 보드에서 정리합니다.
-                  </p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <div className="dream-stat min-w-[132px]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">Tracks</p>
-                    <p className="mt-2 text-2xl font-bold">{items.length}</p>
-                    <p className="text-xs text-plum">이번 달 전체 일정</p>
-                  </div>
-                  <div className="dream-stat min-w-[132px]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">Series</p>
-                    <p className="mt-2 text-2xl font-bold">{recurringCount}</p>
-                    <p className="text-xs text-plum">반복 시리즈</p>
-                  </div>
-                  <div className="dream-stat min-w-[132px]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent">Single</p>
-                    <p className="mt-2 text-2xl font-bold">{singleCount}</p>
-                    <p className="text-xs text-plum">단일 일정</p>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.34em] text-accent">Comeback Board</p>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                  <h2 className="text-3xl font-bold text-ink sm:text-4xl">{monthLabel(currentMonth)}</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {summaryStats.map((stat) => (
+                      <div
+                        key={stat.label}
+                        className="flex items-center gap-1 rounded-full border border-white/70 bg-white/65 px-3 py-1 text-xs font-medium text-plum shadow-[0_8px_20px_rgba(219,185,255,0.18)]"
+                      >
+                        <span>{stat.label}</span>
+                        <span className="font-semibold text-ink">{stat.value}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

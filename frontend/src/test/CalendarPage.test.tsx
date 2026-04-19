@@ -91,6 +91,43 @@ describe('CalendarPage', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
   })
 
+  test('renders Korean summary labels and month badges in the header', async () => {
+    fetchMock.mockResolvedValueOnce(
+      createJsonResponse([
+        createScheduleItem(),
+        createScheduleItem({
+          id: 2,
+          title: 'Recurring shoot',
+          date: '2026-04-22',
+          isRecurring: true,
+          recurrence: {
+            type: 'WEEKLY',
+            interval: 1,
+            endType: 'COUNT',
+            untilDate: null,
+            count: 3,
+            anchorDate: '2026-04-22',
+          },
+        }),
+      ]),
+    )
+    mockInitialLookups()
+
+    renderWithQueryClient(<CalendarPage />)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
+
+    expect(screen.queryByText('Tracks')).not.toBeInTheDocument()
+    expect(screen.queryByText('Series')).not.toBeInTheDocument()
+    expect(screen.queryByText('Single')).not.toBeInTheDocument()
+
+    expect(screen.getAllByText('전체 일정')).toHaveLength(1)
+    expect(screen.getAllByText('반복 일정')).toHaveLength(1)
+    expect(screen.getAllByText('단일 일정')).toHaveLength(1)
+    expect(screen.queryByText('이번달 전체 일정')).not.toBeInTheDocument()
+    expect(document.querySelectorAll('.dream-stat')).toHaveLength(0)
+  })
+
   test('keeps the latest month data when an earlier request resolves late', async () => {
     const today = new Date()
     const nextMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, 2)
