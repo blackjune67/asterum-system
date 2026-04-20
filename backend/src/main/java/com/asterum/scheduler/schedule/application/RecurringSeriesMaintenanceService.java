@@ -168,6 +168,11 @@ public class RecurringSeriesMaintenanceService {
                 target = saved;
             }
         }
+        if (target == null && series != null) {
+            target = scheduleOccurrenceRepository
+                .findBySeriesIdAndOccurrenceDateAndStartTime(series.getId(), targetDate, startTime)
+                .orElse(null);
+        }
         return target;
     }
 
