@@ -33,6 +33,9 @@ public interface ScheduleOccurrenceRepository extends JpaRepository<ScheduleOccu
 
     boolean existsBySeriesIdAndOccurrenceDateAndStartTime(Long seriesId, LocalDate date, LocalTime startTime);
 
+    @EntityGraph(attributePaths = {"series", "resource"})
+    Optional<ScheduleOccurrence> findBySeriesIdAndOccurrenceDateAndStartTime(Long seriesId, LocalDate date, LocalTime startTime);
+
     @EntityGraph(attributePaths = {"series", "series.resource"})
     ScheduleOccurrence findTopBySeriesIdOrderByOccurrenceDateDescStartTimeDesc(Long seriesId);
 }
