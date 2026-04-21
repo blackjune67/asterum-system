@@ -3,38 +3,52 @@ package com.asterum.scheduler.schedule.application;
 import com.asterum.scheduler.common.exception.ErrorCode;
 import com.asterum.scheduler.common.exception.NotFoundException;
 import com.asterum.scheduler.schedule.domain.OccurrenceStatus;
+import com.asterum.scheduler.schedule.domain.RecurrenceGenerator;
+import com.asterum.scheduler.schedule.domain.RecurrenceSpec;
+import com.asterum.scheduler.schedule.domain.ScheduleSeries;
 import com.asterum.scheduler.schedule.domain.ScheduleOccurrence;
 import com.asterum.scheduler.schedule.infrastructure.persistence.ScheduleOccurrenceRepository;
 import com.asterum.scheduler.schedule.infrastructure.persistence.ScheduleMonthOccurrenceRow;
 import com.asterum.scheduler.schedule.infrastructure.persistence.ScheduleMonthParticipantRow;
 import com.asterum.scheduler.schedule.infrastructure.persistence.ScheduleMonthReadRepository;
+import com.asterum.scheduler.schedule.infrastructure.persistence.ScheduleSeriesRepository;
 import com.asterum.scheduler.schedule.infrastructure.persistence.ScheduleMonthTeamMemberRow;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional(readOnly = true)
 public class ScheduleQueryService {
 
     private final ScheduleOccurrenceRepository scheduleOccurrenceRepository;
     private final ScheduleMonthReadRepository scheduleMonthReadRepository;
     private final ScheduleOccurrenceViewInitializer scheduleOccurrenceViewInitializer;
+    private final ScheduleSeriesRepository scheduleSeriesRepository;
+    private final RecurringSeriesMaintenanceService recurringSeriesMaintenanceService;
+    private final RecurrenceGenerator recurrenceGenerator;
 
     public ScheduleQueryService(
         ScheduleOccurrenceRepository scheduleOccurrenceRepository,
         ScheduleMonthReadRepository scheduleMonthReadRepository,
-        ScheduleOccurrenceViewInitializer scheduleOccurrenceViewInitializer
+        ScheduleOccurrenceViewInitializer scheduleOccurrenceViewInitializer,
+        ScheduleSeriesRepository scheduleSeriesRepository,
+        RecurringSeriesMaintenanceService recurringSeriesMaintenanceService,
+        RecurrenceGenerator recurrenceGenerator
     ) {
         this.scheduleOccurrenceRepository = scheduleOccurrenceRepository;
         this.scheduleMonthReadRepository = scheduleMonthReadRepository;
         this.scheduleOccurrenceViewInitializer = scheduleOccurrenceViewInitializer;
+        this.scheduleSeriesRepository = scheduleSeriesRepository;
+        this.recurringSeriesMaintenanceService = recurringSeriesMaintenanceService;
+        this.recurrenceGenerator = recurrenceGenerator;
     }
 
+    @Transactional(readOnly = true)
     public ScheduleOccurrence get(Long id) {
         return scheduleOccurrenceViewInitializer.initialize(
             scheduleOccurrenceRepository.findById(id)
@@ -42,9 +56,11 @@ public class ScheduleQueryService {
         );
     }
 
+    @Transactional
     public List<ScheduleMonthView> listMonth(int year, int month) {
         LocalDate start = LocalDate.of(year, month, 1);
         LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
+        materializeOccurrencesForRequestedRange(end);
         List<ScheduleMonthOccurrenceRow> occurrenceRows = scheduleMonthReadRepository.findMonthOccurrences(
             start,
             end,
@@ -66,6 +82,58 @@ public class ScheduleQueryService {
         return builders.values().stream()
             .map(MonthScheduleResponseBuilder::build)
             .toList();
+    }
+
+    private void materializeOccurrencesForRequestedRange(LocalDate requestedEnd) {
+        scheduleSeriesRepository.findByActiveTrueAndAnchorDateLessThanEqual(requestedEnd)
+            .forEach(series -> materializeSeriesThrough(series, requestedEnd));
+    }
+
+    private void materializeSeriesThrough(ScheduleSeries series, LocalDate requestedEnd) {
+        RecurrenceSpec recurrenceSpec = new RecurrenceSpec(
+            series.getRecurrenceType(),
+            series.getIntervalValue(),
+            series.getEndType(),
+            series.getUntilDate(),
+            series.getOccurrenceCount()
+        );
+
+        LocalDate materializationEnd = switch (series.getEndType()) {
+            case NEVER -> requestedEnd;
+            case UNTIL_DATE, COUNT -> requestedEnd.isBefore(recurrenceSpec.initialHorizon(series.getAnchorDate()))
+                ? requestedEnd
+                : recurrenceSpec.initialHorizon(series.getAnchorDate());
+        };
+
+        if (materializationEnd.isBefore(series.getAnchorDate())) {
+            return;
+        }
+
+        ScheduleOccurrence latest = scheduleOccurrenceRepository.findTopBySeriesIdOrderByOccurrenceDateDescStartTimeDesc(series.getId());
+        LocalDate nextDate = latest == null
+            ? series.getAnchorDate()
+            : recurrenceGenerator.nextDate(
+                latest.getOccurrenceDate(),
+                series.getRecurrenceType(),
+                series.getIntervalValue()
+            );
+        if (nextDate.isAfter(materializationEnd)) {
+            return;
+        }
+
+        recurringSeriesMaintenanceService.materializeOccurrences(
+            series,
+            recurrenceSpec,
+            series.getTitle(),
+            series.getStartTime(),
+            series.getEndTime(),
+            series.getResource(),
+            recurringSeriesMaintenanceService.snapshotFromSeries(series),
+            nextDate,
+            materializationEnd,
+            nextDate,
+            Set.of()
+        );
     }
 
     private static final class MonthScheduleResponseBuilder {

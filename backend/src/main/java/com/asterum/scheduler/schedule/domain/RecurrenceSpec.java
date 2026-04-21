@@ -28,7 +28,21 @@ public record RecurrenceSpec(
         return switch (endType) {
             case NEVER -> anchorDate.plusMonths(6);
             case UNTIL_DATE -> untilDate;
-            case COUNT -> anchorDate.plusYears(2);
+            case COUNT -> count == null || count <= 1
+                ? anchorDate
+                : advanceOccurrences(anchorDate, count - 1);
         };
+    }
+
+    private LocalDate advanceOccurrences(LocalDate date, int occurrences) {
+        LocalDate current = date;
+        for (int index = 0; index < occurrences; index++) {
+            current = switch (type) {
+                case DAILY -> current.plusDays(interval);
+                case WEEKLY -> current.plusWeeks(interval);
+                case MONTHLY -> current.plusMonths(interval);
+            };
+        }
+        return current;
     }
 }

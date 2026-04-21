@@ -66,7 +66,7 @@ class ScheduleControllerTest {
     }
 
     @Test
-    void listingMonthMustNotMaterializeMoreOccurrencesForInfiniteSeries() throws Exception {
+    void listingMonthDoesNotMaterializeMoreOccurrencesWhenRequestedRangeIsAlreadyCovered() throws Exception {
         mockMvc.perform(post("/api/schedules")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -88,14 +88,81 @@ class ScheduleControllerTest {
 
         long occurrencesBeforeRead = scheduleOccurrenceRepository.count();
 
-        mockMvc.perform(get("/api/schedules?year=2026&month=12"))
+        mockMvc.perform(get("/api/schedules?year=2026&month=6"))
             .andExpect(status().isOk());
 
         long occurrencesAfterRead = scheduleOccurrenceRepository.count();
 
         org.assertj.core.api.Assertions.assertThat(occurrencesAfterRead)
-            .as("GET /api/schedules must not persist more schedule occurrences")
+            .as("GET /api/schedules should not persist more occurrences when the requested month is already materialized")
             .isEqualTo(occurrencesBeforeRead);
+    }
+
+    @Test
+    void listingLaterMonthMaterializesOccurrencesForInfiniteSeries() throws Exception {
+        mockMvc.perform(post("/api/schedules")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "title": "Open-ended monthly schedule",
+                      "date": "2026-04-05",
+                      "startTime": "10:00:00",
+                      "endTime": "12:00:00",
+                      "participantIds": [1],
+                      "recurrence": {
+                        "enabled": true,
+                        "type": "MONTHLY",
+                        "interval": 1,
+                        "endType": "NEVER"
+                      }
+                    }
+                    """))
+            .andExpect(status().isCreated());
+
+        long occurrencesBeforeRead = scheduleOccurrenceRepository.count();
+
+        mockMvc.perform(get("/api/schedules?year=2026&month=12"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].date").value("2026-12-05"));
+
+        long occurrencesAfterRead = scheduleOccurrenceRepository.count();
+
+        org.assertj.core.api.Assertions.assertThat(occurrencesAfterRead)
+            .as("GET /api/schedules should extend open-ended recurring series when a later month is requested")
+            .isGreaterThan(occurrencesBeforeRead);
+    }
+
+    @Test
+    void createsAllOccurrencesForCountBasedSeriesEvenWhenIntervalExceedsTwoYears() throws Exception {
+        mockMvc.perform(post("/api/schedules")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "title": "Quarterly planning cycle",
+                      "date": "2026-01-15",
+                      "startTime": "09:00:00",
+                      "endTime": "10:00:00",
+                      "participantIds": [1],
+                      "recurrence": {
+                        "enabled": true,
+                        "type": "MONTHLY",
+                        "interval": 3,
+                        "endType": "COUNT",
+                        "count": 10
+                      }
+                    }
+                    """))
+            .andExpect(status().isCreated());
+
+        org.assertj.core.api.Assertions.assertThat(scheduleOccurrenceRepository.count())
+            .as("COUNT-based recurring series should materialize every requested occurrence")
+            .isEqualTo(10);
+
+        mockMvc.perform(get("/api/schedules?year=2028&month=4"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(1)))
+            .andExpect(jsonPath("$[0].date").value("2028-04-15"));
     }
 
     @Test
